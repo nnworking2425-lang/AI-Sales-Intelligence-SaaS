@@ -1,0 +1,25 @@
+{
+  "model": "RandomForestRegressor",
+  "r2": 0.9153,
+  "mae": 805.7,
+  "rmse": 2453.38,
+  "samples": 3930,
+  "features": [
+    "OrderCount",
+    "QuantitySold",
+    "Revenue_Lag1",
+    "Revenue_Lag2",
+    "Revenue_Lag3",
+    "Quantity_Lag1"
+  ],
+  "feature_defaults": {
+    "OrderCount": 5.0093657742034,
+    "QuantitySold": 10.72508398656215,
+    "Revenue_Lag1": 4429.71998172656,
+    "Revenue_Lag2": 4444.334280296243,
+    "Revenue_Lag3": 4288.976532149037,
+    "Quantity_Lag1": 11.051460857171943
+  },
+  "target": "ActualRevenue",
+  "trained_date": "2026-09-20"
+}

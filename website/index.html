@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>AI Sales Intelligence System</title>
+    <link rel="stylesheet" href="style.css">
+    <script>window.location.replace("pages/dashboard.html");</script>
+</head>
+
+<body>
+
+<div class="header">
+    <h1>AI SALES INTELLIGENCE SYSTEM</h1>
+    <p>Machine Learning Based Revenue Forecasting Platform</p>
+</div>
+
+<div class="main">
+
+<div class="card">
+    <h2>Revenue Prediction</h2>
+
+    <div class="grid">
+        <div>
+            <label>Order Count</label>
+            <input id="OrderCount" type="number" value="800">
+        </div>
+
+        <div>
+            <label>Quantity Sold</label>
+            <input id="QuantitySold" type="number" value="800">
+        </div>
+
+        <div>
+            <label>Revenue Lag 1</label>
+            <input id="Revenue_Lag1" type="number" value="888">
+        </div>
+
+        <div>
+            <label>Revenue Lag 2</label>
+            <input id="Revenue_Lag2" type="number" value="854">
+        </div>
+
+        <div>
+            <label>Revenue Lag 3</label>
+            <input id="Revenue_Lag3" type="number" value="3546">
+        </div>
+
+        <div>
+            <label>Quantity Lag 1</label>
+            <input id="Quantity_Lag1" type="number" value="656">
+        </div>
+    </div>
+
+    <button type="button" id="predictButton" onclick="predict()">Predict Revenue</button>
+
+    <div class="result-box">
+        <h3>Forecast Result</h3>
+        <div id="result"><h1>Ready for a new prediction</h1></div>
+
+        <div class="prediction-meta">
+            <span>Model: <strong id="prediction-model">RandomForestRegressor</strong></span>
+            <span>Accuracy: <strong id="prediction-accuracy">91.53%</strong></span>
+            <span>Prediction time: <strong id="prediction-time">--</strong></span>
+        </div>
+        <div id="last-prediction" class="last-prediction">Last prediction: --</div>
+
+        <div class="model-info">
+            Model: Random Forest Regression
+            <br>
+            Performance: R² = 93.2%
+        </div>
+    </div>
+</div>
+
+<div class="card training-card">
+    <h2>AI Model Training</h2>
+
+    <div class="training-controls">
+        <label for="training-file">Upload CSV dataset</label>
+        <input id="training-file" type="file" accept=".csv,text/csv">
+        <button type="button" id="train-model">Train New AI Model</button>
+    </div>
+
+    <div id="training-status">Select a CSV file to train a new model.</div>
+
+    <div class="training-summary">
+        <div>
+            <span>Current Model</span>
+            <strong id="current-model">--</strong>
+        </div>
+        <div>
+            <span>Accuracy</span>
+            <strong id="current-model-accuracy">--</strong>
+        </div>
+    </div>
+
+    <h3>Model History</h3>
+    <div class="history-table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Model</th>
+                    <th>R² Score</th>
+                    <th>MAE</th>
+                    <th>RMSE</th>
+                </tr>
+            </thead>
+            <tbody id="model-history-body">
+                <tr>
+                    <td colspan="5">No model training history</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card performance-card">
+    <h2>AI Model Performance</h2>
+    <div id="performance-status">Loading model performance...</div>
+
+    <div class="performance-grid">
+        <div class="performance-kpi">
+            <span>R² Accuracy</span>
+            <strong id="performance-r2">--</strong>
+        </div>
+
+        <div class="performance-kpi">
+            <span>MAE</span>
+            <strong id="performance-mae">--</strong>
+        </div>
+
+        <div class="performance-kpi">
+            <span>RMSE</span>
+            <strong id="performance-rmse">--</strong>
+        </div>
+
+        <div class="performance-kpi">
+            <span>Test Samples</span>
+            <strong id="performance-samples">--</strong>
+        </div>
+    </div>
+</div>
+
+<div class="card history-card">
+    <h2>Prediction History</h2>
+
+    <div class="history-actions">
+        <button type="button" id="clear-history">Clear History</button>
+        <button type="button" id="export-history">Export Prediction History</button>
+    </div>
+
+    <div class="history-kpi-grid">
+        <div class="history-kpi">
+            <span>Total Predictions</span>
+            <strong id="total-predictions">--</strong>
+        </div>
+
+        <div class="history-kpi">
+            <span>Average Predicted Revenue</span>
+            <strong id="average-prediction">--</strong>
+        </div>
+
+        <div class="history-kpi">
+            <span>Highest Forecast</span>
+            <strong id="highest-forecast">--</strong>
+        </div>
+
+        <div class="history-kpi">
+            <span>Latest Forecast</span>
+            <strong id="latest-forecast">--</strong>
+        </div>
+    </div>
+
+    <div class="history-table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Order Count</th>
+                    <th>Actual Revenue</th>
+                    <th>AI Predicted Revenue</th>
+                </tr>
+            </thead>
+            <tbody id="history-body">
+                <tr>
+                    <td colspan="4">No prediction history</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="history-pagination" class="history-actions" hidden>
+        <button type="button" data-history-previous>Previous</button>
+        <span data-history-page>Page 1 of 1</span>
+        <button type="button" data-history-next>Next</button>
+    </div>
+
+    <div class="history-chart">
+        <canvas id="prediction-chart"></canvas>
+    </div>
+</div>
+
+<div class="card dashboard">
+    <h2>Business Analytics Dashboard</h2>
+
+    <div class="powerbi-container">
+        <iframe
+            title="BIS#3"
+            src="https://app.powerbi.com/reportEmbed?reportId=8dc7842f-d035-4281-aa74-5211db74bb5e&autoAuth=true&ctid=14d5de2b-d212-4175-92d5-156ea5b7c037"
+            frameborder="0"
+            allowFullScreen="true">
+        </iframe>
+    </div>
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="script.js?v=5"></script>
+
+</body>
+</html>

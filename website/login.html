@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In | AI Sales Intelligence</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-page">
+    <main class="auth-shell">
+        <section class="auth-panel">
+            <p class="eyebrow">AI SALES INTELLIGENCE</p>
+            <h1>Welcome back</h1>
+            <p class="auth-copy">Sign in to your forecasting workspace.</p>
+            <form id="login-form">
+                <label for="login-username">Username</label>
+                <input id="login-username" type="text" autocomplete="username" required>
+                <label for="login-password">Password</label>
+                <input id="login-password" type="password" autocomplete="current-password" required>
+                <button type="submit">Login</button>
+                <p id="login-status" class="form-status"></p>
+            </form>
+        </section>
+    </main>
+    <script>
+        document.getElementById("login-form").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const status = document.getElementById("login-status");
+            status.textContent = "Signing in...";
+            try {
+                const response = await fetch("http://127.0.0.1:5000/login", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        username: document.getElementById("login-username").value,
+                        password: document.getElementById("login-password").value
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Login failed");
+                window.location.href = "pages/dashboard.html";
+            } catch (error) {
+                status.textContent = error.message;
+            }
+        });
+    </script>
+</body>
+</html>

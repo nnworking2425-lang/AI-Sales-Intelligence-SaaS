@@ -1,0 +1,27 @@
+[data-theme="dark"] {
+    --background: #111827;
+    --card: #1f2937;
+    --text: #ffffff;
+    --muted: #aab4c7;
+    --border: #374151;
+    --sidebar: #0b1226;
+    --shadow: 0 10px 30px rgba(0,0,0,.24);
+    --shadow-hover: 0 18px 40px rgba(0,0,0,.34);
+}
+
+[data-theme="dark"] .topbar,
+[data-theme="dark"] .field input,
+[data-theme="dark"] .button.secondary,
+[data-theme="dark"] .icon-button,
+[data-theme="dark"] .kpi-card,
+[data-theme="dark"] .analytics-card,
+[data-theme="dark"] .chart-card,
+[data-theme="dark"] .powerbi-container { background: var(--card); }
+[data-theme="dark"] .field input { color: var(--text); }
+[data-theme="dark"] th { background: #273653; color: #dce4ff; }
+[data-theme="dark"] tbody tr:nth-child(even) { background: rgba(255,255,255,.025); }
+[data-theme="dark"] tbody tr:hover { background: #273653; }
+[data-theme="dark"] .forecast-result { border-color: #344b83; background: linear-gradient(145deg, #1d2b4a, #17352a); }
+[data-theme="dark"] .upload-box,.dark-mode [data-theme="dark"] .upload-box { border-color: #52658f; background: #17233d; }
+[data-theme="dark"] .model-summary > div { background: #243452; }
+[data-theme="dark"] .kpi-icon { background: #2b3d6c; }

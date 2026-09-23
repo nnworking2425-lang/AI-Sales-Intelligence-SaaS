@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | AI Sales Intelligence</title>
+    <link rel="stylesheet" href="style.css">
+    <script>window.location.replace("pages/dashboard.html");</script>
+</head>
+<body>
+<header class="app-bar">
+    <div><strong>AI SALES INTELLIGENCE</strong><span>Business command center</span></div>
+    <div class="user-menu"><span id="user-name">Loading...</span><span id="user-role" class="role-badge">--</span><button id="logout-button" type="button">Logout</button></div>
+</header>
+<main class="main dashboard-main">
+    <section class="section-heading"><p class="eyebrow">ENTERPRISE WORKSPACE</p><h1>Revenue intelligence</h1><p>Forecast demand, monitor model health, and review business performance.</p></section>
+
+    <section class="card" id="forecast-section">
+        <h2>Revenue Forecast</h2>
+        <div class="grid">
+            <div><label>Order Count</label><input id="OrderCount" type="number" value="800"></div>
+            <div><label>Quantity Sold</label><input id="QuantitySold" type="number" value="800"></div>
+            <div><label>Revenue Lag 1</label><input id="Revenue_Lag1" type="number" value="888"></div>
+            <div><label>Revenue Lag 2</label><input id="Revenue_Lag2" type="number" value="854"></div>
+            <div><label>Revenue Lag 3</label><input id="Revenue_Lag3" type="number" value="3546"></div>
+            <div><label>Quantity Lag 1</label><input id="Quantity_Lag1" type="number" value="656"></div>
+        </div>
+        <button type="button" onclick="predict()">Predict Revenue</button>
+        <div class="result-box"><h3>Forecast Result</h3><div id="result"><h1>Waiting for prediction...</h1></div></div>
+    </section>
+
+    <section class="card training-card" id="training-section">
+        <h2>AI Model Training</h2>
+        <div class="training-controls"><label for="training-file">Upload CSV dataset</label><input id="training-file" type="file" accept=".csv,text/csv"><button type="button" id="train-model">Train New AI Model</button></div>
+        <div id="training-status">Select a CSV file to train a new model.</div>
+        <div class="training-summary"><div><span>Current Model</span><strong id="current-model">--</strong></div><div><span>Accuracy</span><strong id="current-model-accuracy">--</strong></div></div>
+        <h3>Model History</h3>
+        <div class="history-table-wrapper"><table><thead><tr><th>Date</th><th>Model</th><th>R² Score</th><th>MAE</th><th>RMSE</th></tr></thead><tbody id="model-history-body"><tr><td colspan="5">No model training history</td></tr></tbody></table></div>
+    </section>
+
+    <section class="card performance-card"><h2>AI Model Information</h2><div class="performance-grid"><div class="performance-kpi"><span>R² Accuracy</span><strong id="performance-r2">--</strong></div><div class="performance-kpi"><span>MAE</span><strong id="performance-mae">--</strong></div><div class="performance-kpi"><span>RMSE</span><strong id="performance-rmse">--</strong></div><div class="performance-kpi"><span>Test Samples</span><strong id="performance-samples">--</strong></div></div></section>
+
+    <section class="card"><div class="card-heading"><h2>Prediction History</h2><div><button type="button" id="clear-history" class="compact-button">Clear History</button><button type="button" id="export-history" class="compact-button">Export CSV</button></div></div><div class="history-kpi-grid"><div class="history-kpi"><span>Total Predictions</span><strong id="total-predictions">--</strong></div><div class="history-kpi"><span>Average Predicted Revenue</span><strong id="average-prediction">--</strong></div><div class="history-kpi"><span>Highest Forecast</span><strong id="highest-forecast">--</strong></div><div class="history-kpi"><span>Latest Forecast</span><strong id="latest-forecast">--</strong></div></div><div class="history-table-wrapper"><table><thead><tr><th>Date</th><th>Order Count</th><th>Actual Revenue</th><th>AI Predicted Revenue</th></tr></thead><tbody id="history-body"><tr><td colspan="4">No prediction history</td></tr></tbody></table></div><div id="history-pagination" class="history-actions" hidden><button type="button" data-history-previous>Previous</button><span data-history-page>Page 1 of 1</span><button type="button" data-history-next>Next</button></div><div class="history-chart"><canvas id="prediction-chart"></canvas></div></section>
+
+    <section class="card"><h2>Business Analytics</h2><div class="analytics-grid"><div class="history-kpi"><span>Total Revenue</span><strong id="analytics-total">--</strong></div><div class="history-kpi"><span>Average Order Value</span><strong id="analytics-average">--</strong></div><div class="history-kpi"><span>Growth %</span><strong id="analytics-growth">--</strong></div><div class="history-kpi"><span>AI Accuracy</span><strong id="analytics-accuracy">--</strong></div><div class="history-kpi"><span>Best Sales Day</span><strong id="analytics-best-day">--</strong></div><div class="history-kpi"><span>Highest Revenue</span><strong id="analytics-highest">--</strong></div></div><div class="trend-grid"><div class="history-chart"><canvas id="daily-chart"></canvas></div><div class="history-chart"><canvas id="weekly-chart"></canvas></div><div class="history-chart"><canvas id="monthly-chart"></canvas></div></div></section>
+
+    <section class="card dashboard"><h2>Business Intelligence Dashboard</h2><div class="powerbi-container"><iframe title="BIS#3" src="https://app.powerbi.com/reportEmbed?reportId=8dc7842f-d035-4281-aa74-5211db74bb5e&autoAuth=true&ctid=14d5de2b-d212-4175-92d5-156ea5b7c037" frameborder="0" allowFullScreen="true"></iframe></div></section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="script.js?v=6"></script>
+</body>
+</html>

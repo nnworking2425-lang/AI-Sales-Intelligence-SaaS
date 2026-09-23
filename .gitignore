@@ -1,0 +1,14 @@
+.env
+
+# Dataset
+AI_SalesDataset_Orange.csv
+
+# Python
+__pycache__/
+*.pyc
+
+# Model
+*.pkl
+
+# VS Code
+.vscode/
