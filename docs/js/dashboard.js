@@ -1,4 +1,5 @@
-const API_BASE = "http://127.0.0.1:5000";
+const API_BASE_URL = "";
+const API_BASE = API_BASE_URL;
 const DASHBOARD_REFRESH_KEY = "ai-sales-dashboard-refresh";
 
 function setTextForIds(ids, value) {
@@ -10,7 +11,7 @@ function setTextForIds(ids, value) {
 }
 
 async function getJson(path, options = {}) {
-    const response = await fetch(`${API_BASE}${path}`, { credentials: "include", ...options });
+    const response = await fetch(`${API_BASE_URL}${path}`, { credentials: "include", ...options });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || payload.message || "Request failed");
     return payload;

@@ -1,3 +1,5 @@
+const API_BASE_URL = "";
+
 async function predict() {
 	const resultElement = document.getElementById("result");
 	const predictButton = document.getElementById("predictButton");
@@ -22,7 +24,7 @@ async function predict() {
 	resultElement.innerHTML = "<h1>Loading prediction...</h1>";
 
 	try {
-		const response = await fetch("http://127.0.0.1:5000/predict", {
+		const response = await fetch(`${API_BASE_URL}/predict`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json"
@@ -98,7 +100,7 @@ async function loadModelPerformance() {
 	const statusElement = document.getElementById("performance-status");
 
 	try {
-		const response = await fetch("http://127.0.0.1:5000/model-performance", { credentials: "include" });
+		const response = await fetch(`${API_BASE_URL}/model-performance`, { credentials: "include" });
 		const result = await response.json();
 
 		if (!response.ok) {
@@ -121,7 +123,7 @@ async function loadPredictionHistory() {
 	if (!historyBody) return;
 
 	try {
-		const response = await fetch("http://127.0.0.1:5000/prediction-history", { credentials: "include" });
+		const response = await fetch(`${API_BASE_URL}/prediction-history`, { credentials: "include" });
 		const history = await response.json();
 
 		if (!response.ok) {
@@ -183,7 +185,7 @@ async function clearPredictionHistory() {
 	if (!window.confirm("Clear all prediction history?")) return;
 
 	try {
-		const response = await fetch("http://127.0.0.1:5000/history", {
+		const response = await fetch(`${API_BASE_URL}/history`, {
 			method: "DELETE",
 			credentials: "include"
 		});
@@ -198,8 +200,8 @@ async function clearPredictionHistory() {
 async function loadModelTrainingData() {
 	try {
 		const [infoResponse, historyResponse] = await Promise.all([
-			fetch("http://127.0.0.1:5000/model-info", { credentials: "include" }),
-			fetch("http://127.0.0.1:5000/model-training-history", { credentials: "include" })
+			fetch(`${API_BASE_URL}/model-info`, { credentials: "include" }),
+			fetch(`${API_BASE_URL}/model-training-history`, { credentials: "include" })
 		]);
 		const info = await infoResponse.json();
 		const history = await historyResponse.json();
@@ -248,7 +250,7 @@ async function trainNewModel() {
 	statusElement.textContent = "Training model...";
 
 	try {
-		const response = await fetch("http://127.0.0.1:5000/train", {
+		const response = await fetch(`${API_BASE_URL}/train`, {
 			method: "POST",
 			credentials: "include",
 			body: formData
@@ -346,7 +348,7 @@ function updatePredictionChart(history) {
 }
 
 function exportPredictionHistory() {
-	fetch("http://127.0.0.1:5000/prediction-history", { credentials: "include" })
+	fetch(`${API_BASE_URL}/prediction-history`, { credentials: "include" })
 		.then((response) => response.json().then((data) => ({ response, data })))
 		.then(({ response, data }) => {
 			if (!response.ok) {
@@ -374,7 +376,7 @@ function exportPredictionHistory() {
 }
 
 async function loadCurrentUser() {
-	const response = await fetch("http://127.0.0.1:5000/current-user", { credentials: "include" });
+	const response = await fetch(`${API_BASE_URL}/current-user`, { credentials: "include" });
 	const result = await response.json();
 	if (!result.user) {
 		window.location.href = "login.html";
@@ -400,7 +402,7 @@ async function loadCurrentUser() {
 }
 
 async function logout() {
-	await fetch("http://127.0.0.1:5000/logout", {
+	await fetch(`${API_BASE_URL}/logout`, {
 		method: "POST",
 		credentials: "include"
 	});
@@ -411,9 +413,9 @@ async function loadAnalytics() {
 	if (!document.getElementById("analytics-total")) return;
 	try {
 		const [analyticsResponse, trendsResponse, performanceResponse] = await Promise.all([
-			fetch("http://127.0.0.1:5000/analytics", { credentials: "include" }),
-			fetch("http://127.0.0.1:5000/sales-trends", { credentials: "include" }),
-			fetch("http://127.0.0.1:5000/model-performance", { credentials: "include" })
+			fetch(`${API_BASE_URL}/analytics`, { credentials: "include" }),
+			fetch(`${API_BASE_URL}/sales-trends`, { credentials: "include" }),
+			fetch(`${API_BASE_URL}/model-performance`, { credentials: "include" })
 		]);
 		const analytics = await analyticsResponse.json();
 		const trends = await trendsResponse.json();

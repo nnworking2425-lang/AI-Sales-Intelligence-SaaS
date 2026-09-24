@@ -1,3 +1,5 @@
+const API_BASE_URL = "";
+
 const PREDICTION_STORAGE_KEY = "ai-sales-last-prediction";
 
 function notifyDashboardRefresh() {
@@ -77,11 +79,11 @@ async function predict() {
     };
     result.innerHTML = "<strong class=\"result-value\">Predicting...</strong>";
     if (status) status.textContent = "Requesting forecast...";
-    console.log("Request URL:", "http://127.0.0.1:5000/predict");
+    console.log("Request URL:", `${API_BASE_URL}/predict`);
     console.log("PAYLOAD:", data);
 
     try {
-        const response = await fetch("http://127.0.0.1:5000/predict", {
+        const response = await fetch(`${API_BASE_URL}/predict`, {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },

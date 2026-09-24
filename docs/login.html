@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="auth-page">
+    <script>
+        const API_BASE_URL = "";
+    </script>
     <main class="auth-shell">
         <section class="auth-panel">
             <p class="eyebrow">AI SALES INTELLIGENCE</p>
@@ -28,7 +31,7 @@
             const status = document.getElementById("login-status");
             status.textContent = "Signing in...";
             try {
-                const response = await fetch("http://127.0.0.1:5000/login", {
+                const response = await fetch(`${API_BASE_URL}/login`, {
                     method: "POST",
                     credentials: "include",
                     headers: { "Content-Type": "application/json" },
