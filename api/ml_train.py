@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE_DIR, "model")
-BEST_MODEL_PATH = os.path.join(MODEL_DIR, "random_forest_sales.pkl")
+BEST_MODEL_PATH = os.path.join(MODEL_DIR, "best_sales_model.pkl")
 MODEL_INFO_PATH = os.path.join(MODEL_DIR, "model_info.json")
 TARGET_COLUMN = "ActualRevenue"
 FEATURE_COLUMNS = [

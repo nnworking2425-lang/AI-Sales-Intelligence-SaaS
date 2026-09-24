@@ -66,7 +66,7 @@ def resolve_project_path(configured_path, default_path):
 
 FALLBACK_MODEL_PATH = resolve_project_path(
     os.getenv("MODEL_PATH"),
-    os.path.join(BASE_DIR, "..", "model", "random_forest_sales.pkl")
+    os.path.join(BASE_DIR, "model", "best_sales_model.pkl")
 )
 
 DATASET_PATH = os.path.join(
@@ -98,13 +98,11 @@ initialize_database(DATABASE_PATH)
 
 
 def load_active_model():
-    fallback_path = os.path.join(
-        BASE_DIR,
-        "..",
-        "model",
-        "random_forest_sales.pkl"
-    )
-    candidate_paths = [BEST_MODEL_PATH, FALLBACK_MODEL_PATH, fallback_path]
+    candidate_paths = [
+        os.getenv("MODEL_PATH"),
+        BEST_MODEL_PATH,
+        FALLBACK_MODEL_PATH,
+    ]
 
     for active_model_path in dict.fromkeys(candidate_paths):
         if not os.path.exists(active_model_path):
