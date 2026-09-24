@@ -22,7 +22,13 @@ except ImportError:
     from database import initialize_database
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True)
+CORS(
+    app,
+    resources={r"/*": {"origins": os.getenv("CORS_ORIGINS", "*")}},
+    supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+)
 
 
 def load_environment_file(path):
@@ -42,8 +48,10 @@ load_environment_file(
 )
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "development-only-change-me")
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+app.config["JSON_SORT_KEYS"] = False
 app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SAMESITE"] = "None" if os.getenv("FLASK_ENV") == "production" else "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_ENV") == "production"
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -185,6 +193,8 @@ def create_table():
     conn.commit()
     conn.close()
 
+
+create_table()
 
 
 # ==========================
@@ -499,11 +509,8 @@ def delete_history():
 
 
 if __name__ == "__main__":
-
-    create_table()
-
     app.run(
-        host="127.0.0.1",
-        port=5000,
-        debug=True
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", "5000")),
+        debug=False
     )
