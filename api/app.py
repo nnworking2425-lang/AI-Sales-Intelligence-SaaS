@@ -120,7 +120,13 @@ def load_active_model():
     raise FileNotFoundError("No compatible six-feature sales model was found.")
 
 
-model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_active_model()
+try:
+    model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_active_model()
+except FileNotFoundError:
+    model = None
+    ACTIVE_FEATURE_NAMES = FEATURE_NAMES.copy()
+    ACTIVE_FEATURE_DEFAULTS = {}
+    app.logger.warning("No compatible model file found. Set MODEL_PATH or MODEL_URL to provide a production model.")
 
 
 # ==========================
@@ -205,6 +211,8 @@ def test():
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    if model is None:
+        return jsonify({"error": "Model is not available. Please configure a production model before prediction requests."}), 503
 
     data = request.json
     print(request.json)
@@ -427,6 +435,14 @@ def model_info():
 @app.route("/model-performance", methods=["GET"])
 @login_required
 def model_performance():
+    if model is None:
+        return jsonify({
+            "r2": 0,
+            "mae": 0,
+            "rmse": 0,
+            "samples": 0,
+            "message": "Model is not available in the current deployment."
+        })
 
     data = pd.read_csv(DATASET_PATH)
 

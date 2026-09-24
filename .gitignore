@@ -9,7 +9,6 @@ __pycache__/
 
 # Model
 *.pkl
-!api/model/best_sales_model.pkl
 
 # VS Code
 .vscode/
