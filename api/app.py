@@ -64,6 +64,24 @@ def resolve_project_path(configured_path, default_path):
         return configured_path
     return os.path.abspath(os.path.join(BASE_DIR, "..", configured_path))
 
+
+def load_saved_model_metadata():
+    fallback_features = FEATURE_NAMES.copy()
+    fallback_defaults = {}
+
+    if not os.path.exists(MODEL_INFO_PATH):
+        return fallback_features, fallback_defaults
+
+    try:
+        with open(MODEL_INFO_PATH, "r", encoding="utf-8") as file:
+            saved_info = json.load(file)
+        features = saved_info.get("features") or fallback_features
+        defaults = saved_info.get("feature_defaults") or fallback_defaults
+        return list(features), defaults
+    except (json.JSONDecodeError, OSError, TypeError):
+        return fallback_features, fallback_defaults
+
+
 FALLBACK_MODEL_PATH = resolve_project_path(
     os.getenv("MODEL_PATH"),
     os.path.join(BASE_DIR, "model", "best_sales_model.pkl")
@@ -105,10 +123,14 @@ def load_active_model():
     ]
 
     for active_model_path in dict.fromkeys(candidate_paths):
-        if not os.path.exists(active_model_path):
+        if not active_model_path or not os.path.exists(active_model_path):
             continue
 
-        loaded_model = joblib.load(active_model_path)
+        try:
+            loaded_model = joblib.load(active_model_path)
+        except Exception:
+            continue
+
         loaded_feature_names = getattr(loaded_model, "feature_names_in_", None)
         if loaded_feature_names is not None and list(loaded_feature_names) != FEATURE_NAMES:
             continue
@@ -117,15 +139,12 @@ def load_active_model():
 
         return loaded_model, FEATURE_NAMES.copy(), {}
 
-    raise FileNotFoundError("No compatible six-feature sales model was found.")
+    saved_features, saved_defaults = load_saved_model_metadata()
+    return None, saved_features, saved_defaults
 
 
-try:
-    model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_active_model()
-except FileNotFoundError:
-    model = None
-    ACTIVE_FEATURE_NAMES = FEATURE_NAMES.copy()
-    ACTIVE_FEATURE_DEFAULTS = {}
+model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_active_model()
+if model is None:
     app.logger.warning("No compatible model file found. Set MODEL_PATH or MODEL_URL to provide a production model.")
 
 
@@ -212,7 +231,9 @@ def test():
 @app.route("/predict", methods=["POST"])
 def predict():
     if model is None:
-        return jsonify({"error": "Model is not available. Please configure a production model before prediction requests."}), 503
+        return jsonify({
+            "error": "Model is not available in this deployment. Please configure a production model before prediction requests."
+        }), 503
 
     data = request.json
     print(request.json)
@@ -220,9 +241,9 @@ def predict():
     try:
         input_values = {
             name: float(data[name])
-            for name in FEATURE_NAMES
+            for name in ACTIVE_FEATURE_NAMES
         }
-        ordered_features = [[input_values[name] for name in FEATURE_NAMES]]
+        ordered_features = [[input_values[name] for name in ACTIVE_FEATURE_NAMES]]
         prediction = model.predict(ordered_features)[0]
     except (KeyError, TypeError, ValueError):
         return jsonify({
