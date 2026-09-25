@@ -10,10 +10,34 @@ function setTextForIds(ids, value) {
     });
 }
 
+function safeNumber(value, fallback = 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function formatMetric(value, digits = 2, suffix = "") {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return "--";
+    const formatted = Number(value).toFixed(digits);
+    return `${formatted}${suffix}`;
+}
+
 async function getJson(path, options = {}) {
     const response = await fetch(`${API_BASE_URL}${path}`, { credentials: "include", ...options });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || payload.message || "Request failed");
+    const text = await response.text();
+    let payload = {};
+
+    if (text) {
+        try {
+            payload = JSON.parse(text);
+        } catch (error) {
+            payload = {};
+        }
+    }
+
+    if (!response.ok) {
+        throw new Error(payload.error || payload.message || "Request failed");
+    }
+
     return payload;
 }
 
@@ -50,21 +74,26 @@ function setActiveNav() {
 async function loadPerformance() {
     try {
         const performance = await getJson("/model-performance");
-        setTextForIds(["kpi-r2", "performance-r2", "analytics-accuracy"], `${(Number(performance.r2) * 100).toFixed(2)}%`);
-        setTextForIds(["kpi-mae", "performance-mae"], Number(performance.mae).toFixed(2));
-        setTextForIds(["kpi-rmse", "performance-rmse"], Number(performance.rmse).toFixed(2));
-        setTextForIds(["kpi-samples", "performance-samples"], performance.samples ?? "--");
+        const r2Value = safeNumber(performance.r2, 0) * 100;
+        const maeValue = safeNumber(performance.mae, 0);
+        const rmseValue = safeNumber(performance.rmse, 0);
+        const sampleValue = safeNumber(performance.samples, 0);
+
+        setTextForIds(["kpi-r2", "performance-r2", "analytics-accuracy"], `${r2Value.toFixed(2)}%`);
+        setTextForIds(["kpi-mae", "performance-mae"], formatMetric(maeValue, 2));
+        setTextForIds(["kpi-rmse", "performance-rmse"], formatMetric(rmseValue, 2));
+        setTextForIds(["kpi-samples", "performance-samples"], formatMetric(sampleValue, 0));
     } catch (error) { console.error("Performance error:", error); }
 }
 
 async function loadAnalyticsSummary() {
     try {
         const data = await getJson("/analytics");
-        setTextForIds(["analytics-total", "total-predictions"], Number(data.total_revenue ?? 0).toFixed(2));
-        setTextForIds(["analytics-average", "average-prediction"], Number(data.average_revenue ?? 0).toFixed(2));
-        setTextForIds(["analytics-growth"], `${Number(data.growth_rate ?? 0).toFixed(2)}%`);
+        setTextForIds(["analytics-total", "total-predictions"], formatMetric(safeNumber(data.total_revenue, 0), 2));
+        setTextForIds(["analytics-average", "average-prediction"], formatMetric(safeNumber(data.average_revenue, 0), 2));
+        setTextForIds(["analytics-growth"], `${safeNumber(data.growth_rate, 0).toFixed(2)}%`);
         setTextForIds(["analytics-best-day"], data.best_sales_day || "--");
-        setTextForIds(["analytics-highest", "highest-forecast"], Number(data.highest_revenue ?? 0).toFixed(2));
+        setTextForIds(["analytics-highest", "highest-forecast"], formatMetric(safeNumber(data.highest_revenue, 0), 2));
     } catch (error) { console.error("Analytics error:", error); }
 }
 
@@ -89,9 +118,12 @@ async function loadAnalyticsCharts() {
 async function loadModelInfo() {
     try {
         const data = await getJson("/model-info");
-        document.querySelectorAll("[data-model-name]").forEach((element) => { element.textContent = data.model || "--"; });
-        document.querySelectorAll("[data-model-accuracy]").forEach((element) => { element.textContent = data.r2 ? `${(Number(data.r2) * 100).toFixed(2)}%` : "--"; });
-        if (data.r2) setTextForIds(["current-model-accuracy", "analytics-accuracy"], `${(Number(data.r2) * 100).toFixed(2)}%`);
+        const modelName = data.model || "--";
+        const accuracyValue = safeNumber(data.r2, 0) * 100;
+
+        document.querySelectorAll("[data-model-name]").forEach((element) => { element.textContent = modelName; });
+        document.querySelectorAll("[data-model-accuracy]").forEach((element) => { element.textContent = `${accuracyValue.toFixed(2)}%`; });
+        setTextForIds(["current-model-accuracy", "analytics-accuracy"], `${accuracyValue.toFixed(2)}%`);
     } catch (error) { console.error("Model info error:", error); }
 }
 
@@ -121,7 +153,7 @@ async function trainNewModel() {
 async function loadHistory() {
     try {
         const history = await getJson("/prediction-history");
-        const predictions = Array.isArray(history) ? history.map((record) => Number(record.predicted_revenue)) : [];
+        const predictions = Array.isArray(history) ? history.map((record) => Number(record.predicted_revenue)).filter((value) => Number.isFinite(value)) : [];
         const latestForecast = predictions.length ? predictions[0].toFixed(2) : "--";
         setTextForIds(["dashboard-latest-forecast", "latest-forecast"], latestForecast);
 

@@ -67,8 +67,9 @@ app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "development-only-change-me")
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 app.config["JSON_SORT_KEYS"] = False
 app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SAMESITE"] = "None" if os.getenv("FLASK_ENV") == "production" else "Lax"
-app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_ENV") == "production"
+is_production = os.getenv("FLASK_ENV") == "production" or bool(os.getenv("RENDER")) or os.getenv("APP_ENV") == "production"
+app.config["SESSION_COOKIE_SAMESITE"] = "None" if is_production else "Lax"
+app.config["SESSION_COOKIE_SECURE"] = is_production
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
