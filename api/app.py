@@ -48,6 +48,47 @@ def home():
     }
 
 
+@app.route("/api/dashboard")
+@login_required
+def dashboard_api():
+    performance_response = model_performance()
+    analytics_handler = app.view_functions.get("analytics.analytics")
+    analytics_response = analytics_handler() if analytics_handler else jsonify({})
+    model_info_response = model_info()
+
+    performance_payload = performance_response.get_json(silent=True) if hasattr(performance_response, "get_json") else {}
+    analytics_payload = analytics_response.get_json(silent=True) if hasattr(analytics_response, "get_json") else {}
+    model_info_payload = model_info_response.get_json(silent=True) if hasattr(model_info_response, "get_json") else {}
+
+    return jsonify({
+        "r2": performance_payload.get("r2", 0),
+        "mae": performance_payload.get("mae", 0),
+        "rmse": performance_payload.get("rmse", 0),
+        "samples": performance_payload.get("samples", 0),
+        "total_revenue": analytics_payload.get("total_revenue", 0),
+        "average_order_value": analytics_payload.get("average_revenue", 0),
+        "growth": analytics_payload.get("growth_rate", 0),
+        "model": model_info_payload.get("model", ""),
+        "best_sales_day": analytics_payload.get("best_sales_day"),
+        "highest_revenue": analytics_payload.get("highest_revenue", 0)
+    })
+
+
+@app.route("/api/model-info")
+@login_required
+def api_model_info():
+    return model_info()
+
+
+@app.route("/api/analytics")
+@login_required
+def api_analytics():
+    analytics_handler = app.view_functions.get("analytics.analytics")
+    if analytics_handler is None:
+        return jsonify({})
+    return analytics_handler()
+
+
 def load_environment_file(path):
     if not os.path.exists(path):
         return

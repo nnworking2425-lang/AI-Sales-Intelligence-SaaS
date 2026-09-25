@@ -1,5 +1,4 @@
-const API_BASE_URL = "https://ai-sales-intelligence-saas.onrender.com";
-const API_BASE = API_BASE_URL;
+const API_BASE = "https://ai-sales-intelligence-saas.onrender.com";
 const DASHBOARD_REFRESH_KEY = "ai-sales-dashboard-refresh";
 
 function setTextForIds(ids, value) {
@@ -22,23 +21,30 @@ function formatMetric(value, digits = 2, suffix = "") {
 }
 
 async function getJson(path, options = {}) {
-    const response = await fetch(`${API_BASE_URL}${path}`, { credentials: "include", ...options });
-    const text = await response.text();
-    let payload = {};
+    const url = `${API_BASE}${path}`;
+    try {
+        const response = await fetch(url, { credentials: "include", ...options });
+        const text = await response.text();
+        let payload = {};
 
-    if (text) {
-        try {
-            payload = JSON.parse(text);
-        } catch (error) {
-            payload = {};
+        if (text) {
+            try {
+                payload = JSON.parse(text);
+            } catch (error) {
+                console.error(`Invalid JSON from ${url}:`, error);
+                payload = {};
+            }
         }
-    }
 
-    if (!response.ok) {
-        throw new Error(payload.error || payload.message || "Request failed");
-    }
+        if (!response.ok) {
+            throw new Error(payload.error || payload.message || `Request failed: ${response.status}`);
+        }
 
-    return payload;
+        return payload;
+    } catch (error) {
+        console.error(`Dashboard API request failed for ${path}:`, error);
+        throw error;
+    }
 }
 
 async function requireUser() {
@@ -73,7 +79,7 @@ function setActiveNav() {
 
 async function loadPerformance() {
     try {
-        const performance = await getJson("/model-performance");
+        const performance = await getJson("/api/dashboard");
         const r2Value = safeNumber(performance.r2, 0) * 100;
         const maeValue = safeNumber(performance.mae, 0);
         const rmseValue = safeNumber(performance.rmse, 0);
@@ -88,10 +94,10 @@ async function loadPerformance() {
 
 async function loadAnalyticsSummary() {
     try {
-        const data = await getJson("/analytics");
+        const data = await getJson("/api/analytics");
         setTextForIds(["analytics-total", "total-predictions"], formatMetric(safeNumber(data.total_revenue, 0), 2));
-        setTextForIds(["analytics-average", "average-prediction"], formatMetric(safeNumber(data.average_revenue, 0), 2));
-        setTextForIds(["analytics-growth"], `${safeNumber(data.growth_rate, 0).toFixed(2)}%`);
+        setTextForIds(["analytics-average", "average-prediction"], formatMetric(safeNumber(data.average_order_value ?? data.average_revenue, 0), 2));
+        setTextForIds(["analytics-growth"], `${safeNumber(data.growth ?? data.growth_rate, 0).toFixed(2)}%`);
         setTextForIds(["analytics-best-day"], data.best_sales_day || "--");
         setTextForIds(["analytics-highest", "highest-forecast"], formatMetric(safeNumber(data.highest_revenue, 0), 2));
     } catch (error) { console.error("Analytics error:", error); }
@@ -117,7 +123,7 @@ async function loadAnalyticsCharts() {
 
 async function loadModelInfo() {
     try {
-        const data = await getJson("/model-info");
+        const data = await getJson("/api/model-info");
         const modelName = data.model || "--";
         const accuracyValue = safeNumber(data.r2, 0) * 100;
 
