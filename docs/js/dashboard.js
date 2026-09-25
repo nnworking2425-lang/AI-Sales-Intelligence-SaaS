@@ -83,13 +83,14 @@ function setActiveNav() {
 async function loadPerformance() {
     try {
         const performance = await getJson("/api/dashboard");
-        const fallbackModelInfo = await getJson("/api/model-info").catch(() => ({}));
+        const modelInfo = await getJson("/api/model-info").catch(() => ({}));
+        console.log("MODEL INFO DATA:", modelInfo);
 
         const dashboardMetrics = {
-            r2_accuracy: safeNumber(performance.r2_accuracy ?? performance.r2 ?? performance.accuracy ?? fallbackModelInfo.r2, 0),
-            mae: safeNumber(performance.mae ?? fallbackModelInfo.mae, 0),
-            rmse: safeNumber(performance.rmse ?? fallbackModelInfo.rmse, 0),
-            test_samples: safeNumber(performance.test_samples ?? performance.samples ?? fallbackModelInfo.samples, 0),
+            r2_accuracy: safeNumber(modelInfo.r2 ?? performance.r2 ?? performance.r2_accuracy ?? performance.accuracy, 0),
+            mae: safeNumber(modelInfo.mae ?? performance.mae, 0),
+            rmse: safeNumber(modelInfo.rmse ?? performance.rmse, 0),
+            test_samples: safeNumber(modelInfo.samples ?? modelInfo.test_samples ?? performance.test_samples ?? performance.samples, 0),
             latest_forecast: safeNumber(performance.latest_forecast ?? performance.latest ?? performance.predicted_revenue ?? performance.recent_prediction, 0),
             total_revenue: safeNumber(performance.total_revenue ?? performance.totalRevenue, 0),
             average_order_value: safeNumber(performance.average_order_value ?? performance.average_revenue ?? performance.average_order, 0),
@@ -144,7 +145,7 @@ async function loadAnalyticsCharts() {
 async function loadModelInfo() {
     try {
         const data = await getJson("/api/model-info");
-        console.log("MODEL INFO", data);
+        console.log("MODEL INFO DATA:", data);
         const modelName = data.model || "--";
         const accuracyValue = safeNumber(data.r2 ?? data.r2_accuracy, 0) * 100;
 
