@@ -158,6 +158,7 @@ app.config["SESSION_COOKIE_SECURE"] = is_production
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL = None
 
 
 def resolve_project_path(configured_path, default_path):
@@ -293,11 +294,20 @@ def load_production_model():
 
 
 def load_active_model():
-    return load_production_model()
+    return get_model()
 
 
-model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
-if model is None:
+def get_model():
+    global MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
+
+    if MODEL is None:
+        MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
+
+    return MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
+
+
+MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = get_model()
+if MODEL is None:
     app.logger.warning("No compatible model file found. Set MODEL_PATH or MODEL_URL to provide a production model.")
 
 
@@ -383,8 +393,8 @@ def test():
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    global model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
-    model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
+    global MODEL
+    model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = get_model()
 
     if model is None:
         return jsonify({
@@ -518,7 +528,7 @@ def prediction_history():
 @app.route("/train", methods=["POST"])
 @roles_required("Admin")
 def train():
-    global model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
+    global MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
 
     uploaded_file = request.files.get("file")
     if uploaded_file is None or uploaded_file.filename == "":
@@ -542,7 +552,7 @@ def train():
         if result["status"] != "success":
             return jsonify(result), 400
 
-        model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_active_model()
+        MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_active_model()
 
         conn = sqlite3.connect(DATABASE_PATH)
         conn.execute("""
@@ -598,8 +608,8 @@ def model_training_history():
 @app.route("/model-info", methods=["GET"])
 @login_required
 def model_info():
-    global model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
-    model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
+    global MODEL
+    model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = get_model()
 
     if model is not None:
         payload = {
@@ -633,6 +643,8 @@ def model_info():
 @app.route("/model-performance", methods=["GET"])
 @login_required
 def model_performance():
+    model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = get_model()
+
     if model is None:
         return jsonify({
             "r2": 0,
