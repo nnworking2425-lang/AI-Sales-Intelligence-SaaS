@@ -83,7 +83,12 @@ def home():
 
 @app.route("/health", methods=["GET", "OPTIONS"])
 def health():
-    return jsonify({"status": "ok", "service": "AI Sales Intelligence API"})
+    model_loaded = MODEL is not None
+    return jsonify({
+        "status": "ok",
+        "service": "AI Sales Intelligence API",
+        "model_loaded": model_loaded
+    })
 
 
 @app.route("/dashboard", methods=["GET", "OPTIONS"])
@@ -158,6 +163,7 @@ app.config["SESSION_COOKIE_SECURE"] = is_production
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
 MODEL = None
 
 
@@ -190,8 +196,19 @@ MODEL_DOWNLOAD_PATH = os.path.join(BASE_DIR, "model", "production_model.pkl")
 MODEL_PKL_PATH = os.path.join(BASE_DIR, "model", "model.pkl")
 FALLBACK_MODEL_PATH = resolve_project_path(
     os.getenv("MODEL_PATH"),
-    os.path.join(BASE_DIR, "model", "best_sales_model.pkl")
+    os.path.join(PROJECT_ROOT, "model", "best_sales_model.pkl")
 )
+MODEL_DIR_CANDIDATES = [
+    os.path.join(BASE_DIR, "model"),
+    os.path.join(PROJECT_ROOT, "model"),
+    os.path.join(PROJECT_ROOT, "api", "model"),
+]
+MODEL_FILE_NAMES = [
+    "model.pkl",
+    "production_model.pkl",
+    "best_sales_model.pkl",
+    "random_forest_sales.pkl",
+]
 
 DATASET_PATH = os.path.join(
     BASE_DIR,
@@ -265,15 +282,26 @@ def load_production_model():
         downloaded_model_path,
         MODEL_DOWNLOAD_PATH,
         MODEL_PKL_PATH,
-        os.path.join(BASE_DIR, "model", "production_model.pkl"),
-        os.path.join(BASE_DIR, "model", "model.pkl"),
-        os.path.join(BASE_DIR, "model", "random_forest_sales.pkl"),
         BEST_MODEL_PATH,
         FALLBACK_MODEL_PATH,
     ]
 
-    for active_model_path in dict.fromkeys(candidate_paths):
-        if not active_model_path or not os.path.exists(active_model_path):
+    for model_dir in MODEL_DIR_CANDIDATES:
+        for file_name in MODEL_FILE_NAMES:
+            candidate_paths.append(os.path.join(model_dir, file_name))
+
+    candidate_paths.extend([
+        os.path.join(PROJECT_ROOT, "api", "model", "production_model.pkl"),
+        os.path.join(PROJECT_ROOT, "model", "production_model.pkl"),
+        os.path.join(PROJECT_ROOT, "model", "model.pkl"),
+        os.path.join(PROJECT_ROOT, "model", "random_forest_sales.pkl"),
+    ])
+
+    candidate_paths = [path for path in dict.fromkeys(candidate_paths) if path]
+    app.logger.info("MODEL LOOKUP CANDIDATES: %s", candidate_paths)
+
+    for active_model_path in candidate_paths:
+        if not os.path.exists(active_model_path):
             continue
 
         try:
@@ -287,8 +315,10 @@ def load_production_model():
         if getattr(loaded_model, "n_features_in_", len(FEATURE_NAMES)) != len(FEATURE_NAMES):
             continue
 
+        app.logger.info("MODEL LOADED FROM: %s", active_model_path)
         return loaded_model, FEATURE_NAMES.copy(), {}
 
+    app.logger.warning("No compatible model file found. Checked paths: %s", candidate_paths)
     saved_features, saved_defaults = load_saved_model_metadata()
     return None, saved_features, saved_defaults
 
@@ -395,11 +425,33 @@ def test():
 def predict():
     global MODEL
     model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = get_model()
+    print("MODEL STATUS:", model is not None)
 
     if model is None:
-        return jsonify({
-            "error": "Model is not available in this deployment. Please configure a production model before prediction requests."
-        }), 503
+        absolute_candidates = [
+            os.path.join(PROJECT_ROOT, "model", "best_sales_model.pkl"),
+            os.path.join(PROJECT_ROOT, "model", "production_model.pkl"),
+            os.path.join(PROJECT_ROOT, "model", "random_forest_sales.pkl"),
+            os.path.join(PROJECT_ROOT, "api", "model", "production_model.pkl"),
+            os.path.join(PROJECT_ROOT, "api", "model", "best_sales_model.pkl"),
+            os.path.join(BASE_DIR, "model", "production_model.pkl"),
+            os.path.join(BASE_DIR, "model", "best_sales_model.pkl"),
+        ]
+        for candidate_path in absolute_candidates:
+            if os.path.exists(candidate_path):
+                try:
+                    MODEL = joblib.load(candidate_path)
+                    ACTIVE_FEATURE_NAMES = FEATURE_NAMES.copy()
+                    ACTIVE_FEATURE_DEFAULTS = {}
+                    model = MODEL
+                    print("MODEL RELOADED FROM ABSOLUTE PATH:", candidate_path)
+                    break
+                except Exception as error:
+                    print("MODEL RELOAD FAILED FOR PATH:", candidate_path, error)
+        if model is None:
+            return jsonify({
+                "error": "Model is not available in this deployment. Please configure a production model before prediction requests."
+            }), 503
 
     data = request.json
     print(request.json)
