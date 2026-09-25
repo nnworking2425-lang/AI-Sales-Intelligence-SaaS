@@ -135,6 +135,20 @@ AI_Sales_Project
 pip install -r requirements.txt
 ```
 
+## Render / Production Deployment
+
+For production deployments such as Render, set the following environment variables before starting the app:
+
+```bash
+SECRET_KEY=replace-with-a-strong-secret
+CORS_ORIGINS=https://your-frontend-domain.onrender.com
+MODEL_URL=https://your-bucket.example.com/best_sales_model.pkl
+# Optional override when you want to use a local path instead of the bundled model
+# MODEL_PATH=api/model/best_sales_model.pkl
+```
+
+When `MODEL_URL` is present, the API downloads the model during startup and stores it in `api/model/production_model.pkl` for reuse. If no remote URL is configured, the app falls back to the bundled local model files in `api/model/`.
+
 ## How to Run the Project
 
 ### 1. Start the backend API

@@ -5,9 +5,13 @@ import json
 import math
 import os
 import pandas as pd
+import shutil
 import sqlite3
 import tempfile
+import urllib.request
 from datetime import datetime
+from urllib.parse import urlparse
+from urllib.request import url2pathname
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 try:
@@ -141,6 +145,7 @@ def load_saved_model_metadata():
         return fallback_features, fallback_defaults
 
 
+MODEL_DOWNLOAD_PATH = os.path.join(BASE_DIR, "model", "production_model.pkl")
 FALLBACK_MODEL_PATH = resolve_project_path(
     os.getenv("MODEL_PATH"),
     os.path.join(BASE_DIR, "model", "best_sales_model.pkl")
@@ -174,9 +179,45 @@ os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
 initialize_database(DATABASE_PATH)
 
 
+def download_model_from_url(model_url, destination_path=MODEL_DOWNLOAD_PATH):
+    if not model_url:
+        return None
+
+    try:
+        os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+
+        if model_url.startswith("file://"):
+            parsed_url = urlparse(model_url)
+            local_path = parsed_url.path
+            if parsed_url.netloc and parsed_url.netloc not in {"", "localhost"}:
+                local_path = f"//{parsed_url.netloc}{parsed_url.path}"
+            normalized_path = os.path.abspath(os.path.normpath(url2pathname(local_path)))
+            if not os.path.exists(normalized_path):
+                raise FileNotFoundError(f"Model file does not exist: {normalized_path}")
+            with open(normalized_path, "rb") as source_file:
+                with open(destination_path, "wb") as local_file:
+                    shutil.copyfileobj(source_file, local_file)
+            return destination_path
+
+        with urllib.request.urlopen(model_url, timeout=60) as remote_response:
+            with open(destination_path, "wb") as local_file:
+                shutil.copyfileobj(remote_response, local_file)
+        return destination_path
+    except Exception as error:
+        app.logger.warning("Failed to download production model from MODEL_URL: %s", error)
+        return None
+
+
 def load_active_model():
+    configured_model_path = os.getenv("MODEL_PATH")
+    downloaded_model_path = None
+    model_url = os.getenv("MODEL_URL")
+    if model_url:
+        downloaded_model_path = MODEL_DOWNLOAD_PATH if os.path.exists(MODEL_DOWNLOAD_PATH) else download_model_from_url(model_url)
+
     candidate_paths = [
-        os.getenv("MODEL_PATH"),
+        configured_model_path,
+        downloaded_model_path,
         BEST_MODEL_PATH,
         FALLBACK_MODEL_PATH,
     ]
