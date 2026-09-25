@@ -31,6 +31,14 @@ CORS(
 )
 
 
+@app.route("/")
+def home():
+    return {
+        "status": "running",
+        "service": "AI Sales Intelligence API"
+    }
+
+
 def load_environment_file(path):
     if not os.path.exists(path):
         return
