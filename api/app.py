@@ -572,16 +572,30 @@ def predict():
 
     print("received_data:", data)
 
-    feature_order = [
-        "OrderCount",
-        "QuantitySold",
-        "Revenue_Lag1",
-        "Revenue_Lag2",
-        "Revenue_Lag3",
-        "Quantity_Lag1"
-    ]
+    feature_order = list(getattr(model, "feature_names_in_", ACTIVE_FEATURE_NAMES or FEATURE_NAMES))
+    feature_aliases = {
+        "OrderCount": ["OrderCount", "order_count", "orderCount"],
+        "QuantitySold": ["QuantitySold", "quantity_sold", "quantitySold"],
+        "Revenue_Lag1": ["Revenue_Lag1", "revenue_lag1", "revenueLag1"],
+        "Revenue_Lag2": ["Revenue_Lag2", "revenue_lag2", "revenueLag2"],
+        "Revenue_Lag3": ["Revenue_Lag3", "revenue_lag3", "revenueLag3"],
+        "Quantity_Lag1": ["Quantity_Lag1", "quantity_lag1", "quantityLag1"],
+    }
 
-    missing_fields = [field for field in feature_order if field not in data]
+    normalized_input = {}
+    for key, value in data.items():
+        if value is None:
+            continue
+        normalized_input[str(key)] = value
+
+    payload_by_canonical = {}
+    for canonical_name, alias_names in feature_aliases.items():
+        for alias in alias_names:
+            if alias in normalized_input:
+                payload_by_canonical[canonical_name] = normalized_input[alias]
+                break
+
+    missing_fields = [field for field in feature_order if field not in payload_by_canonical]
     if missing_fields:
         return jsonify({
             "error": f"Missing required fields: {', '.join(missing_fields)}"
@@ -589,7 +603,7 @@ def predict():
 
     try:
         input_values = {
-            name: float(data[name])
+            name: float(payload_by_canonical[name])
             for name in feature_order
         }
         ordered_features = pd.DataFrame(
