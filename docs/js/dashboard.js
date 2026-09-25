@@ -50,6 +50,22 @@ async function getJson(path, options = {}) {
     }
 }
 
+function getDashboardGreeting(date = new Date()) {
+    const hour = date.getHours();
+    if (hour >= 5 && hour < 12) return "Good morning";
+    if (hour >= 12 && hour < 18) return "Good afternoon";
+    return "Good evening";
+}
+
+function updateDashboardGreeting() {
+    const heading = document.querySelector(".page-heading h1");
+    if (!heading) return;
+
+    const currentUser = document.querySelector("[data-user-name]")?.textContent?.trim() || "admin";
+    const greeting = getDashboardGreeting();
+    heading.textContent = `${greeting}, ${currentUser}`;
+}
+
 async function requireUser() {
     const result = await getJson("/current-user");
     if (!result.user) {
@@ -59,6 +75,7 @@ async function requireUser() {
     document.querySelectorAll("[data-user-name]").forEach((element) => { element.textContent = result.user.username; });
     document.querySelectorAll("[data-user-role]").forEach((element) => { element.textContent = result.user.role; });
     document.querySelectorAll("[data-user-initials]").forEach((element) => { element.textContent = result.user.username.slice(0, 2).toUpperCase(); });
+    updateDashboardGreeting();
     return result.user;
 }
 
@@ -256,6 +273,8 @@ window.addEventListener("storage", (event) => {
 
 document.addEventListener("DOMContentLoaded", async () => {
     setActiveNav();
+    updateDashboardGreeting();
+    setInterval(updateDashboardGreeting, 60000);
     const user = await requireUser();
     if (!user) return;
     document.getElementById("logout-button")?.addEventListener("click", logout);
