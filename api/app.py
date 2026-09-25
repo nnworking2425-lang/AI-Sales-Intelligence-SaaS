@@ -174,7 +174,8 @@ app.config["SESSION_COOKIE_SECURE"] = is_production
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
-MODEL_PATH = os.path.join(BASE_DIR, "model", "production_model.pkl")
+MODEL_DIR = os.path.abspath(os.path.join(BASE_DIR, "model"))
+MODEL_PATH = os.path.abspath(os.path.join(MODEL_DIR, "production_model.pkl"))
 MODEL = None
 
 
@@ -289,27 +290,35 @@ def load_production_model():
         downloaded_model_path = MODEL_DOWNLOAD_PATH if os.path.exists(MODEL_DOWNLOAD_PATH) else download_model_from_url(model_url)
 
     candidate_paths = [
+        os.path.abspath(os.path.join(BASE_DIR, "model", "production_model.pkl")),
         MODEL_PATH,
         configured_model_path,
         downloaded_model_path,
         MODEL_DOWNLOAD_PATH,
         MODEL_PKL_PATH,
+        os.path.abspath(os.path.join(BASE_DIR, "model", "best_sales_model.pkl")),
+        os.path.abspath(os.path.join(BASE_DIR, "model", "random_forest_sales.pkl")),
+        os.path.abspath(os.path.join(PROJECT_ROOT, "model", "production_model.pkl")),
+        os.path.abspath(os.path.join(PROJECT_ROOT, "model", "random_forest_sales.pkl")),
+        os.path.abspath(os.path.join(PROJECT_ROOT, "model", "model.pkl")),
         BEST_MODEL_PATH,
         FALLBACK_MODEL_PATH,
     ]
 
     for model_dir in MODEL_DIR_CANDIDATES:
         for file_name in MODEL_FILE_NAMES:
-            candidate_paths.append(os.path.join(model_dir, file_name))
+            candidate_paths.append(os.path.abspath(os.path.join(model_dir, file_name)))
 
     candidate_paths.extend([
-        os.path.join(PROJECT_ROOT, "api", "model", "production_model.pkl"),
-        os.path.join(PROJECT_ROOT, "model", "production_model.pkl"),
-        os.path.join(PROJECT_ROOT, "model", "model.pkl"),
-        os.path.join(PROJECT_ROOT, "model", "random_forest_sales.pkl"),
+        os.path.abspath(os.path.join(PROJECT_ROOT, "api", "model", "production_model.pkl")),
+        os.path.abspath(os.path.join(PROJECT_ROOT, "api", "model", "best_sales_model.pkl")),
+        os.path.abspath(os.path.join(PROJECT_ROOT, "api", "model", "random_forest_sales.pkl")),
     ])
 
     candidate_paths = [path for path in dict.fromkeys(candidate_paths) if path]
+    print("CURRENT WORKING DIRECTORY:", os.getcwd())
+    for active_model_path in candidate_paths:
+        print(f"MODEL PATH CHECK: {active_model_path} | EXISTS={os.path.exists(active_model_path)}")
     app.logger.info("MODEL LOOKUP CANDIDATES: %s", candidate_paths)
 
     for active_model_path in candidate_paths:
@@ -328,19 +337,29 @@ def load_production_model():
             continue
 
         app.logger.info("MODEL LOADED FROM: %s", active_model_path)
+        print("MODEL LOADED FROM:", active_model_path)
         return loaded_model, FEATURE_NAMES.copy(), {}
 
     app.logger.warning("No compatible model file found. Checked paths: %s", candidate_paths)
+    print("No compatible model file found. Checked paths:", candidate_paths)
     saved_features, saved_defaults = load_saved_model_metadata()
     return None, saved_features, saved_defaults
 
 
 def load_model():
     global MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
-    if MODEL is None:
-        MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
+    print("CURRENT WORKING DIRECTORY:", os.getcwd())
     print("MODEL PATH:", MODEL_PATH)
     print("MODEL EXISTS:", os.path.exists(MODEL_PATH))
+    print("MODEL_DIR EXISTS:", os.path.exists(MODEL_DIR))
+
+    if not os.path.exists(MODEL_PATH):
+        raise FileNotFoundError(f"Missing model file: {MODEL_PATH}")
+
+    MODEL = joblib.load(MODEL_PATH)
+    ACTIVE_FEATURE_NAMES = FEATURE_NAMES.copy()
+    ACTIVE_FEATURE_DEFAULTS = {}
+    print("MODEL TYPE:", type(MODEL))
     print("MODEL LOADED:", MODEL is not None)
     return MODEL
 
@@ -352,13 +371,19 @@ def load_active_model():
 def get_model():
     global MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
     if MODEL is None:
-        MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
+        try:
+            MODEL = load_model()
+        except FileNotFoundError as exc:
+            app.logger.warning("%s", exc)
+            return None, FEATURE_NAMES.copy(), {}
     return MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
 
 
 MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = get_model()
+print("CURRENT WORKING DIRECTORY:", os.getcwd())
 print("MODEL PATH:", MODEL_PATH)
 print("MODEL EXISTS:", os.path.exists(MODEL_PATH))
+print("MODEL TYPE:", type(MODEL) if MODEL is not None else None)
 print("MODEL LOADED:", MODEL is not None)
 if MODEL is None:
     app.logger.warning("No compatible model file found. Set MODEL_PATH or MODEL_URL to provide a production model.")
@@ -449,7 +474,12 @@ def predict():
     global MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
     model = MODEL
     if model is None:
-        model = load_model()
+        try:
+            model = load_model()
+        except FileNotFoundError as exc:
+            return jsonify({
+                "error": str(exc)
+            }), 503
     print("MODEL STATUS:", model is not None)
 
     data = request.json
