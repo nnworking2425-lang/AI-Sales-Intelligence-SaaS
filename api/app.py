@@ -280,46 +280,16 @@ def download_model_from_url(model_url, destination_path=MODEL_DOWNLOAD_PATH):
 
 
 def load_production_model():
-    configured_model_path = os.getenv("MODEL_PATH")
-    if configured_model_path:
-        configured_model_path = resolve_project_path(configured_model_path, configured_model_path)
-
-    downloaded_model_path = None
-    model_url = os.getenv("MODEL_URL")
-    if model_url:
-        downloaded_model_path = MODEL_DOWNLOAD_PATH if os.path.exists(MODEL_DOWNLOAD_PATH) else download_model_from_url(model_url)
-
     candidate_paths = [
         os.path.abspath(os.path.join(BASE_DIR, "model", "production_model.pkl")),
-        MODEL_PATH,
-        configured_model_path,
-        downloaded_model_path,
-        MODEL_DOWNLOAD_PATH,
-        MODEL_PKL_PATH,
         os.path.abspath(os.path.join(BASE_DIR, "model", "best_sales_model.pkl")),
         os.path.abspath(os.path.join(BASE_DIR, "model", "random_forest_sales.pkl")),
-        os.path.abspath(os.path.join(PROJECT_ROOT, "model", "production_model.pkl")),
-        os.path.abspath(os.path.join(PROJECT_ROOT, "model", "random_forest_sales.pkl")),
-        os.path.abspath(os.path.join(PROJECT_ROOT, "model", "model.pkl")),
-        BEST_MODEL_PATH,
-        FALLBACK_MODEL_PATH,
     ]
 
-    for model_dir in MODEL_DIR_CANDIDATES:
-        for file_name in MODEL_FILE_NAMES:
-            candidate_paths.append(os.path.abspath(os.path.join(model_dir, file_name)))
-
-    candidate_paths.extend([
-        os.path.abspath(os.path.join(PROJECT_ROOT, "api", "model", "production_model.pkl")),
-        os.path.abspath(os.path.join(PROJECT_ROOT, "api", "model", "best_sales_model.pkl")),
-        os.path.abspath(os.path.join(PROJECT_ROOT, "api", "model", "random_forest_sales.pkl")),
-    ])
-
-    candidate_paths = [path for path in dict.fromkeys(candidate_paths) if path]
     print("CURRENT WORKING DIRECTORY:", os.getcwd())
+    print("MODEL CHECK PATHS:", candidate_paths)
     for active_model_path in candidate_paths:
-        print(f"MODEL PATH CHECK: {active_model_path} | EXISTS={os.path.exists(active_model_path)}")
-    app.logger.info("MODEL LOOKUP CANDIDATES: %s", candidate_paths)
+        print(f"MODEL PATH: {active_model_path} | EXISTS={os.path.exists(active_model_path)}")
 
     for active_model_path in candidate_paths:
         if not os.path.exists(active_model_path):
@@ -327,21 +297,24 @@ def load_production_model():
 
         try:
             loaded_model = joblib.load(active_model_path)
-        except Exception:
+        except Exception as exc:
+            print(f"MODEL LOAD FAILED for {active_model_path}: {exc}")
             continue
 
+        print("LOADED MODEL TYPE:", type(loaded_model).__name__)
         loaded_feature_names = getattr(loaded_model, "feature_names_in_", None)
         if loaded_feature_names is not None and list(loaded_feature_names) != FEATURE_NAMES:
+            print(f"MODEL FEATURE MISMATCH for {active_model_path}: expected {FEATURE_NAMES}")
             continue
         if getattr(loaded_model, "n_features_in_", len(FEATURE_NAMES)) != len(FEATURE_NAMES):
+            print(f"MODEL FEATURE COUNT MISMATCH for {active_model_path}")
             continue
 
-        app.logger.info("MODEL LOADED FROM: %s", active_model_path)
         print("MODEL LOADED FROM:", active_model_path)
         return loaded_model, FEATURE_NAMES.copy(), {}
 
+    print("No compatible model file found.")
     app.logger.warning("No compatible model file found. Checked paths: %s", candidate_paths)
-    print("No compatible model file found. Checked paths:", candidate_paths)
     saved_features, saved_defaults = load_saved_model_metadata()
     return None, saved_features, saved_defaults
 
@@ -349,17 +322,20 @@ def load_production_model():
 def load_model():
     global MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
     print("CURRENT WORKING DIRECTORY:", os.getcwd())
-    print("MODEL PATH:", MODEL_PATH)
-    print("MODEL EXISTS:", os.path.exists(MODEL_PATH))
-    print("MODEL_DIR EXISTS:", os.path.exists(MODEL_DIR))
+    print("MODEL CHECK PATHS:", [
+        os.path.abspath(os.path.join(BASE_DIR, "model", "production_model.pkl")),
+        os.path.abspath(os.path.join(BASE_DIR, "model", "best_sales_model.pkl")),
+        os.path.abspath(os.path.join(BASE_DIR, "model", "random_forest_sales.pkl")),
+    ])
 
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(f"Missing model file: {MODEL_PATH}")
+    model, feature_names, defaults = load_production_model()
+    if model is None:
+        raise FileNotFoundError("No compatible model file found in api/model directory.")
 
-    MODEL = joblib.load(MODEL_PATH)
-    ACTIVE_FEATURE_NAMES = FEATURE_NAMES.copy()
-    ACTIVE_FEATURE_DEFAULTS = {}
-    print("MODEL TYPE:", type(MODEL))
+    MODEL = model
+    ACTIVE_FEATURE_NAMES = feature_names
+    ACTIVE_FEATURE_DEFAULTS = defaults
+    print("MODEL TYPE:", type(MODEL).__name__)
     print("MODEL LOADED:", MODEL is not None)
     return MODEL
 
