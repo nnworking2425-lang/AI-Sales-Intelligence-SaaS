@@ -99,11 +99,16 @@ def dashboard_api():
     analytics_payload = analytics_response.get_json(silent=True) if hasattr(analytics_response, "get_json") else {}
     model_info_payload = model_info_response.get_json(silent=True) if hasattr(model_info_response, "get_json") else {}
 
+    r2_value = performance_payload.get("r2_accuracy", performance_payload.get("r2", 0))
+    sample_value = performance_payload.get("test_samples", performance_payload.get("samples", 0))
+
     return jsonify({
-        "r2": performance_payload.get("r2", 0),
+        "r2": r2_value,
+        "r2_accuracy": r2_value,
         "mae": performance_payload.get("mae", 0),
         "rmse": performance_payload.get("rmse", 0),
-        "samples": performance_payload.get("samples", 0),
+        "samples": sample_value,
+        "test_samples": sample_value,
         "total_revenue": analytics_payload.get("total_revenue", 0),
         "average_order_value": analytics_payload.get("average_revenue", 0),
         "growth": analytics_payload.get("growth_rate", 0),
@@ -629,11 +634,16 @@ def model_performance():
     rmse = math.sqrt(mean_squared_error(y_test, y_pred))
     r2 = r2_score(y_test, y_pred)
 
+    sample_count = int(len(y_test))
+    r2_accuracy = round(float(r2), 4)
+
     return jsonify({
-        "r2": round(float(r2), 4),
+        "r2": r2_accuracy,
+        "r2_accuracy": r2_accuracy,
         "mae": round(float(mae), 2),
         "rmse": round(float(rmse), 2),
-        "samples": int(len(y_test))
+        "samples": sample_count,
+        "test_samples": sample_count
     })
 
 

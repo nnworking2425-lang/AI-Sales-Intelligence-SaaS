@@ -22,6 +22,7 @@ function formatMetric(value, digits = 2, suffix = "") {
 
 async function getJson(path, options = {}) {
     const url = `${API_BASE_URL}${path}`;
+    console.log("Dashboard API URL", url);
     try {
         const response = await fetch(url, { credentials: "include", ...options });
         const text = await response.text();
@@ -35,6 +36,8 @@ async function getJson(path, options = {}) {
                 payload = {};
             }
         }
+
+        console.log("Dashboard response", payload);
 
         if (!response.ok) {
             throw new Error(payload.error || payload.message || `Request failed: ${response.status}`);
@@ -81,26 +84,42 @@ async function loadPerformance() {
     try {
         const performance = await getJson("/api/dashboard");
         const fallbackModelInfo = await getJson("/api/model-info").catch(() => ({}));
-        const r2Value = safeNumber(performance.r2 ?? performance.r2_score ?? performance.accuracy ?? fallbackModelInfo.r2, 0) * 100;
-        const maeValue = safeNumber(performance.mae ?? fallbackModelInfo.mae, 0);
-        const rmseValue = safeNumber(performance.rmse ?? fallbackModelInfo.rmse, 0);
-        const sampleValue = safeNumber(performance.samples ?? performance.test_samples ?? fallbackModelInfo.samples, 0);
 
-        setTextForIds(["kpi-r2", "performance-r2", "analytics-accuracy"], `${Number.isFinite(r2Value) ? r2Value.toFixed(2) : "0.00"}%`);
-        setTextForIds(["kpi-mae", "performance-mae"], formatMetric(maeValue, 2));
-        setTextForIds(["kpi-rmse", "performance-rmse"], formatMetric(rmseValue, 2));
-        setTextForIds(["kpi-samples", "performance-samples"], formatMetric(sampleValue, 0));
+        const dashboardMetrics = {
+            r2_accuracy: safeNumber(performance.r2_accuracy ?? performance.r2 ?? performance.accuracy ?? fallbackModelInfo.r2, 0),
+            mae: safeNumber(performance.mae ?? fallbackModelInfo.mae, 0),
+            rmse: safeNumber(performance.rmse ?? fallbackModelInfo.rmse, 0),
+            test_samples: safeNumber(performance.test_samples ?? performance.samples ?? fallbackModelInfo.samples, 0),
+            latest_forecast: safeNumber(performance.latest_forecast ?? performance.latest ?? performance.predicted_revenue ?? performance.recent_prediction, 0),
+            total_revenue: safeNumber(performance.total_revenue ?? performance.totalRevenue, 0),
+            average_order_value: safeNumber(performance.average_order_value ?? performance.average_revenue ?? performance.average_order, 0),
+            growth: safeNumber(performance.growth ?? performance.growth_rate, 0)
+        };
+
+        setTextForIds(["kpi-r2", "performance-r2", "analytics-accuracy"], `${(dashboardMetrics.r2_accuracy * 100).toFixed(2)}%`);
+        setTextForIds(["kpi-mae", "performance-mae"], formatMetric(dashboardMetrics.mae, 2));
+        setTextForIds(["kpi-rmse", "performance-rmse"], formatMetric(dashboardMetrics.rmse, 2));
+        setTextForIds(["kpi-samples", "performance-samples"], formatMetric(dashboardMetrics.test_samples, 0));
+        setTextForIds(["dashboard-latest-forecast", "latest-forecast"], formatMetric(dashboardMetrics.latest_forecast, 2));
     } catch (error) { console.error("Performance error:", error); }
 }
 
 async function loadAnalyticsSummary() {
     try {
         const data = await getJson("/api/analytics");
-        setTextForIds(["analytics-total", "total-predictions"], formatMetric(safeNumber(data.total_revenue, 0), 2));
-        setTextForIds(["analytics-average", "average-prediction"], formatMetric(safeNumber(data.average_order_value ?? data.average_revenue, 0), 2));
-        setTextForIds(["analytics-growth"], `${safeNumber(data.growth ?? data.growth_rate, 0).toFixed(2)}%`);
-        setTextForIds(["analytics-best-day"], data.best_sales_day || "--");
-        setTextForIds(["analytics-highest", "highest-forecast"], formatMetric(safeNumber(data.highest_revenue, 0), 2));
+        const dashboardMetrics = {
+            total_revenue: safeNumber(data.total_revenue ?? data.totalRevenue, 0),
+            average_order_value: safeNumber(data.average_order_value ?? data.average_revenue ?? data.average_order, 0),
+            growth: safeNumber(data.growth ?? data.growth_rate, 0),
+            best_sales_day: data.best_sales_day || "--",
+            highest_revenue: safeNumber(data.highest_revenue ?? data.highest_forecast, 0)
+        };
+
+        setTextForIds(["analytics-total", "total-predictions"], formatMetric(dashboardMetrics.total_revenue, 2));
+        setTextForIds(["analytics-average", "average-prediction"], formatMetric(dashboardMetrics.average_order_value, 2));
+        setTextForIds(["analytics-growth"], `${dashboardMetrics.growth.toFixed(2)}%`);
+        setTextForIds(["analytics-best-day"], dashboardMetrics.best_sales_day);
+        setTextForIds(["analytics-highest", "highest-forecast"], formatMetric(dashboardMetrics.highest_revenue, 2));
     } catch (error) { console.error("Analytics error:", error); }
 }
 
