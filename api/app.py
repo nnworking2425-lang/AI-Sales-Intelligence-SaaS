@@ -22,12 +22,21 @@ except ImportError:
     from database import initialize_database
 
 app = Flask(__name__)
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "https://ai-sales-intelligence-saas.onrender.com,http://localhost:5500,http://127.0.0.1:5500,http://localhost:3000"
+    ).split(",")
+    if origin.strip()
+]
 CORS(
     app,
-    resources={r"/*": {"origins": os.getenv("CORS_ORIGINS", "*")}},
+    resources={r"/*": {"origins": allowed_origins}},
     supports_credentials=True,
     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    expose_headers=["Content-Type", "Authorization"],
 )
 
 
