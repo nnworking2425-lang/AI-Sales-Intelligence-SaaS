@@ -126,7 +126,19 @@ async function predict() {
     }
 }
 
-document.addEventListener("DOMContentLoaded", restorePredictionState);
+function resetPredictionPlaceholder() {
+    const result = document.getElementById("predictionResult");
+    const status = document.getElementById("prediction-status");
+    if (result && result.textContent && result.textContent.includes("Ready for a new prediction")) {
+        result.innerHTML = "<strong class=\"result-value\">Ready for a new prediction</strong>";
+    }
+    if (status) status.textContent = "Ready for a new prediction";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    resetPredictionPlaceholder();
+    restorePredictionState();
+});
 window.predict = predict;
 
 function formatTimestamp(date) {

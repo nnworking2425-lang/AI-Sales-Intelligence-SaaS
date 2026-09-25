@@ -80,12 +80,13 @@ function setActiveNav() {
 async function loadPerformance() {
     try {
         const performance = await getJson("/api/dashboard");
-        const r2Value = safeNumber(performance.r2, 0) * 100;
-        const maeValue = safeNumber(performance.mae, 0);
-        const rmseValue = safeNumber(performance.rmse, 0);
-        const sampleValue = safeNumber(performance.samples, 0);
+        const fallbackModelInfo = await getJson("/api/model-info").catch(() => ({}));
+        const r2Value = safeNumber(performance.r2 ?? performance.r2_score ?? performance.accuracy ?? fallbackModelInfo.r2, 0) * 100;
+        const maeValue = safeNumber(performance.mae ?? fallbackModelInfo.mae, 0);
+        const rmseValue = safeNumber(performance.rmse ?? fallbackModelInfo.rmse, 0);
+        const sampleValue = safeNumber(performance.samples ?? performance.test_samples ?? fallbackModelInfo.samples, 0);
 
-        setTextForIds(["kpi-r2", "performance-r2", "analytics-accuracy"], `${r2Value.toFixed(2)}%`);
+        setTextForIds(["kpi-r2", "performance-r2", "analytics-accuracy"], `${Number.isFinite(r2Value) ? r2Value.toFixed(2) : "0.00"}%`);
         setTextForIds(["kpi-mae", "performance-mae"], formatMetric(maeValue, 2));
         setTextForIds(["kpi-rmse", "performance-rmse"], formatMetric(rmseValue, 2));
         setTextForIds(["kpi-samples", "performance-samples"], formatMetric(sampleValue, 0));
