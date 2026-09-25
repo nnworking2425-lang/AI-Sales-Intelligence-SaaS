@@ -1,3 +1,6 @@
+import json
+import os
+
 from flask import Blueprint, jsonify
 
 try:
@@ -12,6 +15,23 @@ except ImportError:
 
 analytics_bp = Blueprint("analytics", __name__)
 DATABASE_PATH = None
+
+
+def _read_model_metrics():
+    model_info_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "model", "model_info.json"))
+    try:
+        if not os.path.exists(model_info_path):
+            return {"r2": 0.0, "mae": 0.0, "rmse": 0.0, "test_samples": 0}
+        with open(model_info_path, "r", encoding="utf-8") as file:
+            payload = json.load(file)
+        return {
+            "r2": float(payload.get("r2", 0) or 0),
+            "mae": float(payload.get("mae", 0) or 0),
+            "rmse": float(payload.get("rmse", 0) or 0),
+            "test_samples": int(payload.get("samples", payload.get("test_samples", 0) or 0)),
+        }
+    except (json.JSONDecodeError, OSError, TypeError, ValueError):
+        return {"r2": 0.0, "mae": 0.0, "rmse": 0.0, "test_samples": 0}
 
 
 def configure_analytics(database_path):
@@ -55,12 +75,18 @@ def analytics():
     previous = float(growth["previous"])
     recent = float(growth["recent"])
     growth_rate = ((recent - previous) / previous * 100) if previous else 0
+    model_metrics = _read_model_metrics()
     return jsonify({
         "total_revenue": round(float(totals["total_revenue"]), 2),
         "average_revenue": round(float(totals["average_revenue"]), 2),
         "growth_rate": round(growth_rate, 2),
         "best_sales_day": best_day["day"] if best_day else None,
-        "highest_revenue": round(float(totals["highest_revenue"]), 2)
+        "highest_revenue": round(float(totals["highest_revenue"]), 2),
+        "r2": round(float(model_metrics["r2"]), 4),
+        "mae": round(float(model_metrics["mae"]), 2),
+        "rmse": round(float(model_metrics["rmse"]), 2),
+        "test_samples": int(model_metrics["test_samples"]),
+        "samples": int(model_metrics["test_samples"])
     })
 
 

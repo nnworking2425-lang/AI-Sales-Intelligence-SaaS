@@ -82,19 +82,21 @@ function setActiveNav() {
 
 async function loadPerformance() {
     try {
-        const performance = await getJson("/api/dashboard");
-        const modelInfo = await getJson("/api/model-info").catch(() => ({}));
-        console.log("MODEL INFO DATA:", modelInfo);
+        const [performance, analytics, modelInfo] = await Promise.all([
+            getJson("/api/dashboard").catch(() => ({})),
+            getJson("/api/analytics").catch(() => ({})),
+            getJson("/api/model-info").catch(() => ({}))
+        ]);
 
         const dashboardMetrics = {
-            r2_accuracy: safeNumber(modelInfo.r2 ?? performance.r2 ?? performance.r2_accuracy ?? performance.accuracy, 0),
-            mae: safeNumber(modelInfo.mae ?? performance.mae, 0),
-            rmse: safeNumber(modelInfo.rmse ?? performance.rmse, 0),
-            test_samples: safeNumber(modelInfo.samples ?? modelInfo.test_samples ?? performance.test_samples ?? performance.samples, 0),
+            r2_accuracy: safeNumber(analytics.r2 ?? modelInfo.r2 ?? performance.r2 ?? performance.r2_accuracy ?? performance.accuracy, 0),
+            mae: safeNumber(analytics.mae ?? modelInfo.mae ?? performance.mae, 0),
+            rmse: safeNumber(analytics.rmse ?? modelInfo.rmse ?? performance.rmse, 0),
+            test_samples: safeNumber(analytics.test_samples ?? analytics.samples ?? modelInfo.samples ?? modelInfo.test_samples ?? performance.test_samples ?? performance.samples, 0),
             latest_forecast: safeNumber(performance.latest_forecast ?? performance.latest ?? performance.predicted_revenue ?? performance.recent_prediction, 0),
-            total_revenue: safeNumber(performance.total_revenue ?? performance.totalRevenue, 0),
-            average_order_value: safeNumber(performance.average_order_value ?? performance.average_revenue ?? performance.average_order, 0),
-            growth: safeNumber(performance.growth ?? performance.growth_rate, 0)
+            total_revenue: safeNumber(performance.total_revenue ?? performance.totalRevenue ?? analytics.total_revenue, 0),
+            average_order_value: safeNumber(performance.average_order_value ?? performance.average_revenue ?? performance.average_order ?? analytics.average_revenue, 0),
+            growth: safeNumber(performance.growth ?? performance.growth_rate ?? analytics.growth_rate, 0)
         };
 
         setTextForIds(["kpi-r2", "performance-r2", "analytics-accuracy"], `${(dashboardMetrics.r2_accuracy * 100).toFixed(2)}%`);
