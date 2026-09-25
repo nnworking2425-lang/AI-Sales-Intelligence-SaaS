@@ -174,6 +174,7 @@ app.config["SESSION_COOKIE_SECURE"] = is_production
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
+MODEL_PATH = os.path.join(BASE_DIR, "model", "production_model.pkl")
 MODEL = None
 
 
@@ -206,7 +207,7 @@ MODEL_DOWNLOAD_PATH = os.path.join(BASE_DIR, "model", "production_model.pkl")
 MODEL_PKL_PATH = os.path.join(BASE_DIR, "model", "model.pkl")
 FALLBACK_MODEL_PATH = resolve_project_path(
     os.getenv("MODEL_PATH"),
-    os.path.join(PROJECT_ROOT, "model", "best_sales_model.pkl")
+    MODEL_PATH
 )
 MODEL_DIR_CANDIDATES = [
     os.path.join(BASE_DIR, "model"),
@@ -288,6 +289,7 @@ def load_production_model():
         downloaded_model_path = MODEL_DOWNLOAD_PATH if os.path.exists(MODEL_DOWNLOAD_PATH) else download_model_from_url(model_url)
 
     candidate_paths = [
+        MODEL_PATH,
         configured_model_path,
         downloaded_model_path,
         MODEL_DOWNLOAD_PATH,
@@ -337,6 +339,8 @@ def load_model():
     global MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
     if MODEL is None:
         MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
+    print("MODEL PATH:", MODEL_PATH)
+    print("MODEL EXISTS:", os.path.exists(MODEL_PATH))
     print("MODEL LOADED:", MODEL is not None)
     return MODEL
 
@@ -353,6 +357,8 @@ def get_model():
 
 
 MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = get_model()
+print("MODEL PATH:", MODEL_PATH)
+print("MODEL EXISTS:", os.path.exists(MODEL_PATH))
 print("MODEL LOADED:", MODEL is not None)
 if MODEL is None:
     app.logger.warning("No compatible model file found. Set MODEL_PATH or MODEL_URL to provide a production model.")

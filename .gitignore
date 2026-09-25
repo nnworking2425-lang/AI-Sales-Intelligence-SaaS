@@ -7,8 +7,6 @@ AI_SalesDataset_Orange.csv
 __pycache__/
 *.pyc
 
-# Model
-*.pkl
 
 # VS Code
 .vscode/
