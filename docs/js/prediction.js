@@ -43,7 +43,7 @@ function displayPrediction(data, shouldPersist = true) {
     if (!predictionResult) return;
     const prediction = Number(data.predictionValue ?? data.prediction ?? data.predicted_revenue ?? data.value);
     if (!Number.isFinite(prediction)) return;
-    predictionResult.innerHTML = `<div class="prediction-success"><h3>Forecast Result</h3><h1 class="result-value success">$${prediction.toFixed(2)}</h1><p>AI Predicted Revenue</p></div>`;
+    predictionResult.innerHTML = `<div class="prediction-success"><h3>Predicted Revenue</h3><h1 class="result-value success">${prediction.toFixed(2)}</h1></div>`;
     const status = document.getElementById("prediction-status");
     if (status) status.textContent = "Prediction Result";
     const metadata = document.getElementById("prediction-metadata");
@@ -67,7 +67,7 @@ async function predict() {
     const result = document.getElementById("predictionResult");
     const status = document.getElementById("prediction-status");
     if (!result) return;
-    const data = {
+    const payload = {
         OrderCount: Number(document.getElementById("orderCount").value),
         QuantitySold: Number(document.getElementById("quantitySold").value),
         Revenue_Lag1: Number(document.getElementById("revenueLag1").value),
@@ -78,42 +78,33 @@ async function predict() {
     result.innerHTML = "<strong class=\"result-value\">Predicting...</strong>";
     if (status) status.textContent = "Requesting forecast...";
     console.log("Request URL:", `${API_BASE_URL}/predict`);
-    console.log("PAYLOAD:", data);
+    console.log("PAYLOAD:", payload);
 
     try {
         const response = await fetch(`${API_BASE_URL}/predict`, {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data)
+            body: JSON.stringify(payload)
         });
 
-        const rawText = await response.text();
-        let resultPayload = {};
-        if (rawText) {
-            try {
-                resultPayload = JSON.parse(rawText);
-            } catch (error) {
-                console.error("Prediction JSON parse error:", error);
-                resultPayload = {};
-            }
-        }
+        const data = await response.json().catch(() => ({}));
+        console.log("PREDICT RESPONSE", data);
 
-        console.log("API RESPONSE:", resultPayload);
         if (!response.ok) {
-            const errorMessage = typeof resultPayload.error === "string" ? resultPayload.error : "Prediction request failed";
+            const errorMessage = typeof data.error === "string" ? data.error : "Prediction request failed";
             throw new Error(errorMessage.includes("Model is not available in this deployment") ? "Prediction request failed" : errorMessage);
         }
 
-        const prediction = Number(resultPayload.prediction ?? resultPayload.predicted_revenue ?? resultPayload.value);
+        const prediction = Number(data.predicted_revenue ?? data.prediction ?? data.value);
         if (!Number.isFinite(prediction)) throw new Error("The API returned an invalid prediction");
-        console.log("Prediction received", resultPayload);
+        console.log("Prediction received", data);
         const predictionState = {
             predictionValue: prediction,
             modelName: "RandomForestRegressor",
             accuracy: "91.53%",
             timestamp: formatTimestamp(new Date()),
-            inputValues: data
+            inputValues: payload
         };
         displayPrediction(predictionState, true);
         console.log("UPDATED UI:", document.getElementById("predictionResult"));
