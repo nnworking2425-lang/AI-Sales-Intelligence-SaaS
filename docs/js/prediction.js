@@ -89,10 +89,25 @@ async function predict() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data)
         });
-        const resultPayload = await response.json();
+
+        const rawText = await response.text();
+        let resultPayload = {};
+        if (rawText) {
+            try {
+                resultPayload = JSON.parse(rawText);
+            } catch (error) {
+                console.error("Prediction JSON parse error:", error);
+                resultPayload = {};
+            }
+        }
+
         console.log("API RESPONSE:", resultPayload);
-        if (!response.ok) throw new Error(resultPayload.error || "Prediction request failed");
-        const prediction = Number(resultPayload.prediction ?? resultPayload.predicted_revenue);
+        if (!response.ok) {
+            const errorMessage = typeof resultPayload.error === "string" ? resultPayload.error : "Prediction request failed";
+            throw new Error(errorMessage.includes("Model is not available in this deployment") ? "Prediction request failed" : errorMessage);
+        }
+
+        const prediction = Number(resultPayload.prediction ?? resultPayload.predicted_revenue ?? resultPayload.value);
         if (!Number.isFinite(prediction)) throw new Error("The API returned an invalid prediction");
         console.log("Prediction received", resultPayload);
         const predictionState = {
@@ -106,8 +121,8 @@ async function predict() {
         console.log("UPDATED UI:", document.getElementById("predictionResult"));
     } catch (error) {
         console.error("PREDICT ERROR:", error);
-        result.innerHTML = "<strong class=\"result-value\">Connection Error</strong>";
-        if (status) status.textContent = error.message;
+        result.innerHTML = "<strong class=\"result-value\">Prediction unavailable</strong>";
+        if (status) status.textContent = error.message || "Prediction request failed";
     }
 }
 

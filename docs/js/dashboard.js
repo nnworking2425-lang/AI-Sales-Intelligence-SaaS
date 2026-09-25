@@ -1,4 +1,4 @@
-const API_BASE = "https://ai-sales-intelligence-saas.onrender.com";
+const API_BASE_URL = "https://ai-sales-intelligence-saas.onrender.com";
 const DASHBOARD_REFRESH_KEY = "ai-sales-dashboard-refresh";
 
 function setTextForIds(ids, value) {
@@ -21,7 +21,7 @@ function formatMetric(value, digits = 2, suffix = "") {
 }
 
 async function getJson(path, options = {}) {
-    const url = `${API_BASE}${path}`;
+    const url = `${API_BASE_URL}${path}`;
     try {
         const response = await fetch(url, { credentials: "include", ...options });
         const text = await response.text();
