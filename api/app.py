@@ -186,6 +186,7 @@ def load_saved_model_metadata():
 
 
 MODEL_DOWNLOAD_PATH = os.path.join(BASE_DIR, "model", "production_model.pkl")
+MODEL_PKL_PATH = os.path.join(BASE_DIR, "model", "model.pkl")
 FALLBACK_MODEL_PATH = resolve_project_path(
     os.getenv("MODEL_PATH"),
     os.path.join(BASE_DIR, "model", "best_sales_model.pkl")
@@ -248,8 +249,11 @@ def download_model_from_url(model_url, destination_path=MODEL_DOWNLOAD_PATH):
         return None
 
 
-def load_active_model():
+def load_production_model():
     configured_model_path = os.getenv("MODEL_PATH")
+    if configured_model_path:
+        configured_model_path = resolve_project_path(configured_model_path, configured_model_path)
+
     downloaded_model_path = None
     model_url = os.getenv("MODEL_URL")
     if model_url:
@@ -258,6 +262,11 @@ def load_active_model():
     candidate_paths = [
         configured_model_path,
         downloaded_model_path,
+        MODEL_DOWNLOAD_PATH,
+        MODEL_PKL_PATH,
+        os.path.join(BASE_DIR, "model", "production_model.pkl"),
+        os.path.join(BASE_DIR, "model", "model.pkl"),
+        os.path.join(BASE_DIR, "model", "random_forest_sales.pkl"),
         BEST_MODEL_PATH,
         FALLBACK_MODEL_PATH,
     ]
@@ -283,7 +292,11 @@ def load_active_model():
     return None, saved_features, saved_defaults
 
 
-model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_active_model()
+def load_active_model():
+    return load_production_model()
+
+
+model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
 if model is None:
     app.logger.warning("No compatible model file found. Set MODEL_PATH or MODEL_URL to provide a production model.")
 
@@ -370,6 +383,9 @@ def test():
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    global model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
+    model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
+
     if model is None:
         return jsonify({
             "error": "Model is not available in this deployment. Please configure a production model before prediction requests."
@@ -383,7 +399,10 @@ def predict():
             name: float(data[name])
             for name in ACTIVE_FEATURE_NAMES
         }
-        ordered_features = [[input_values[name] for name in ACTIVE_FEATURE_NAMES]]
+        ordered_features = pd.DataFrame(
+            [[input_values[name] for name in ACTIVE_FEATURE_NAMES]],
+            columns=ACTIVE_FEATURE_NAMES
+        )
         prediction = model.predict(ordered_features)[0]
     except (KeyError, TypeError, ValueError):
         return jsonify({
@@ -579,12 +598,30 @@ def model_training_history():
 @app.route("/model-info", methods=["GET"])
 @login_required
 def model_info():
+    global model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
+    model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
+
+    if model is not None:
+        payload = {
+            "model": type(model).__name__,
+            "features": ACTIVE_FEATURE_NAMES,
+            "r2": 0,
+            "mae": 0,
+            "rmse": 0,
+            "samples": 0,
+        }
+        if os.path.exists(MODEL_INFO_PATH):
+            with open(MODEL_INFO_PATH, "r", encoding="utf-8") as file:
+                metadata = json.load(file)
+            payload.update(metadata)
+        return jsonify(payload)
+
     if os.path.exists(MODEL_INFO_PATH):
         with open(MODEL_INFO_PATH, "r", encoding="utf-8") as file:
             return jsonify(json.load(file))
 
     return jsonify({
-        "model": type(model).__name__,
+        "model": type(model).__name__ if model is not None else "None",
         "features": ACTIVE_FEATURE_NAMES
     })
 
