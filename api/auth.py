@@ -1,3 +1,4 @@
+import secrets
 from functools import wraps
 from datetime import datetime
 
@@ -92,9 +93,20 @@ def register():
 
 @auth_bp.post("/login")
 def login():
-    payload = request.get_json(silent=True) or {}
-    username = str(payload.get("username", "")).strip()
-    password = str(payload.get("password", ""))
+    payload = request.get_json(silent=True)
+    if payload is None:
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+
+    username = str(payload.get("username", "") or "").strip()
+    password = str(payload.get("password", "") or "")
+
+    if not username or not password:
+        return jsonify({
+            "success": False,
+            "message": "Invalid username or password"
+        }), 401
 
     connection = get_connection(DATABASE_PATH)
     user = connection.execute(
@@ -104,18 +116,28 @@ def login():
     connection.close()
 
     if user is None or not check_password_hash(user["password_hash"], password):
-        return jsonify({"error": "Invalid username or password."}), 401
+        return jsonify({
+            "success": False,
+            "message": "Invalid username or password"
+        }), 401
 
     session.clear()
     session["user_id"] = user["id"]
+    token = secrets.token_urlsafe(32)
+    session["auth_token"] = token
+
     return jsonify({
+        "success": True,
+        "message": "Login successful",
+        "token": token,
+        "user": user["username"],
         "status": "success",
-        "user": {
+        "user_details": {
             "username": user["username"],
             "email": user["email"],
             "role": user["role"]
         }
-    })
+    }), 200
 
 
 @auth_bp.get("/current-user")

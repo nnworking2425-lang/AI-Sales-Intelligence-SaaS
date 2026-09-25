@@ -26,7 +26,7 @@ allowed_origins = [
     origin.strip()
     for origin in os.getenv(
         "CORS_ORIGINS",
-        "https://ai-sales-intelligence-saas.onrender.com,http://localhost:5500,http://127.0.0.1:5500,http://localhost:3000"
+        "https://ai-sales-intelligence-saas.onrender.com,http://localhost:5500,http://127.0.0.1:5500,http://localhost:3000,http://localhost:8000,http://127.0.0.1:8000"
     ).split(",")
     if origin.strip()
 ]

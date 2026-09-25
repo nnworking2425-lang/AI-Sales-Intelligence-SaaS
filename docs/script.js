@@ -1,4 +1,4 @@
-const API_BASE_URL = "";
+const API_BASE_URL = "https://ai-sales-intelligence-saas.onrender.com";
 
 async function predict() {
 	const resultElement = document.getElementById("result");
