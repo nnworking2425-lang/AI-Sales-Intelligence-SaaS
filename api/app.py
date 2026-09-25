@@ -333,20 +333,27 @@ def load_production_model():
     return None, saved_features, saved_defaults
 
 
+def load_model():
+    global MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
+    if MODEL is None:
+        MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
+    print("MODEL LOADED:", MODEL is not None)
+    return MODEL
+
+
 def load_active_model():
     return get_model()
 
 
 def get_model():
     global MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
-
     if MODEL is None:
         MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
-
     return MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
 
 
 MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = get_model()
+print("MODEL LOADED:", MODEL is not None)
 if MODEL is None:
     app.logger.warning("No compatible model file found. Set MODEL_PATH or MODEL_URL to provide a production model.")
 
@@ -434,36 +441,10 @@ def test():
 @app.route("/predict", methods=["POST"])
 def predict():
     global MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
-    if MODEL is None:
-        MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
     model = MODEL
-    print("MODEL STATUS:", model is not None)
-
     if model is None:
-        absolute_candidates = [
-            os.path.join(PROJECT_ROOT, "model", "best_sales_model.pkl"),
-            os.path.join(PROJECT_ROOT, "model", "production_model.pkl"),
-            os.path.join(PROJECT_ROOT, "model", "random_forest_sales.pkl"),
-            os.path.join(PROJECT_ROOT, "api", "model", "production_model.pkl"),
-            os.path.join(PROJECT_ROOT, "api", "model", "best_sales_model.pkl"),
-            os.path.join(BASE_DIR, "model", "production_model.pkl"),
-            os.path.join(BASE_DIR, "model", "best_sales_model.pkl"),
-        ]
-        for candidate_path in absolute_candidates:
-            if os.path.exists(candidate_path):
-                try:
-                    MODEL = joblib.load(candidate_path)
-                    ACTIVE_FEATURE_NAMES = FEATURE_NAMES.copy()
-                    ACTIVE_FEATURE_DEFAULTS = {}
-                    model = MODEL
-                    print("MODEL RELOADED FROM ABSOLUTE PATH:", candidate_path)
-                    break
-                except Exception as error:
-                    print("MODEL RELOAD FAILED FOR PATH:", candidate_path, error)
-        if model is None:
-            return jsonify({
-                "error": "Model is not available in this deployment. Please configure a production model before prediction requests."
-            }), 503
+        model = load_model()
+    print("MODEL STATUS:", model is not None)
 
     data = request.json
     print(request.json)
