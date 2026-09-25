@@ -30,6 +30,10 @@ ALLOWED_CORS_ORIGINS = [
     "https://nnworking2425-lang.github.io",
     "http://127.0.0.1:5500",
     "http://localhost:5500",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+    "http://127.0.0.1:5000",
+    "http://localhost:5000",
 ]
 allowed_origins = [
     origin.strip()
@@ -56,13 +60,16 @@ CORS(
 @app.after_request
 def add_cors_headers(response):
     origin = request.headers.get("Origin")
-    if origin in allowed_origins:
-        response.headers["Access-Control-Allow-Origin"] = origin
+    host = request.headers.get("Host", "")
+    is_local_host = "localhost" in host or "127.0.0.1" in host
+
+    if origin in allowed_origins or is_local_host:
+        response.headers["Access-Control-Allow-Origin"] = origin or "http://127.0.0.1:8000"
         response.headers["Access-Control-Allow-Credentials"] = "true"
         response.headers["Vary"] = "Origin"
 
     if request.method == "OPTIONS":
-        response.headers["Access-Control-Allow-Origin"] = origin if origin in allowed_origins else "*"
+        response.headers["Access-Control-Allow-Origin"] = origin or "*"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = (
             "Content-Type, Authorization, X-Requested-With, "
@@ -101,6 +108,39 @@ def health():
     })
 
 
+def get_latest_prediction_payload():
+    connection = sqlite3.connect(DATABASE_PATH)
+    connection.row_factory = sqlite3.Row
+    row = connection.execute("""
+        SELECT predicted_revenue, created_at
+        FROM prediction_history
+        ORDER BY id DESC
+        LIMIT 1
+    """).fetchone()
+    connection.close()
+
+    if row is None or row["predicted_revenue"] is None:
+        return {
+            "latest_forecast": 0.0,
+            "latest": 0.0,
+            "predicted_revenue": 0.0,
+            "recent_prediction": 0.0,
+            "created_at": None,
+            "value": 0.0,
+        }
+
+    value = float(row["predicted_revenue"])
+    rounded = round(value, 2)
+    return {
+        "latest_forecast": rounded,
+        "latest": rounded,
+        "predicted_revenue": rounded,
+        "recent_prediction": rounded,
+        "created_at": row["created_at"],
+        "value": rounded,
+    }
+
+
 @app.route("/dashboard", methods=["GET", "OPTIONS"])
 @app.route("/api/dashboard", methods=["GET", "OPTIONS"])
 @login_required
@@ -113,6 +153,7 @@ def dashboard_api():
     performance_payload = performance_response.get_json(silent=True) if hasattr(performance_response, "get_json") else {}
     analytics_payload = analytics_response.get_json(silent=True) if hasattr(analytics_response, "get_json") else {}
     model_info_payload = model_info_response.get_json(silent=True) if hasattr(model_info_response, "get_json") else {}
+    latest_prediction = get_latest_prediction_payload()
 
     r2_value = performance_payload.get("r2_accuracy", performance_payload.get("r2", 0))
     sample_value = performance_payload.get("test_samples", performance_payload.get("samples", 0))
@@ -129,7 +170,12 @@ def dashboard_api():
         "growth": analytics_payload.get("growth_rate", 0),
         "model": model_info_payload.get("model", ""),
         "best_sales_day": analytics_payload.get("best_sales_day"),
-        "highest_revenue": analytics_payload.get("highest_revenue", 0)
+        "highest_revenue": analytics_payload.get("highest_revenue", 0),
+        "latest_forecast": latest_prediction["latest_forecast"],
+        "latest": latest_prediction["latest"],
+        "predicted_revenue": latest_prediction["predicted_revenue"],
+        "recent_prediction": latest_prediction["recent_prediction"],
+        "created_at": latest_prediction["created_at"],
     })
 
 
@@ -202,6 +248,47 @@ def load_saved_model_metadata():
         return list(features), defaults
     except (json.JSONDecodeError, OSError, TypeError):
         return fallback_features, fallback_defaults
+
+
+def is_git_lfs_pointer_file(file_path):
+    if not file_path or not os.path.exists(file_path):
+        return False
+    try:
+        with open(file_path, "rb") as handle:
+            header = handle.read(256)
+    except OSError:
+        return False
+
+    return header.startswith(b"version https://git-lfs.github.com/spec/v1")
+
+
+def rebuild_model_artifacts():
+    if not os.path.exists(DATASET_PATH):
+        return False
+
+    try:
+        result = train_new_model(DATASET_PATH)
+    except Exception as exc:
+        app.logger.warning("Model retraining failed: %s", exc)
+        return False
+
+    if result.get("status") != "success":
+        app.logger.warning("Model retraining returned unsuccessful status: %s", result)
+        return False
+
+    best_model_path = os.path.join(MODEL_DIR, "best_sales_model.pkl")
+    if not os.path.exists(best_model_path):
+        app.logger.warning("Retraining succeeded but no model file was produced at %s", best_model_path)
+        return False
+
+    for file_name in ["production_model.pkl", "random_forest_sales.pkl"]:
+        destination = os.path.join(MODEL_DIR, file_name)
+        try:
+            shutil.copyfile(best_model_path, destination)
+        except OSError as exc:
+            app.logger.warning("Could not copy trained model to %s: %s", destination, exc)
+
+    return True
 
 
 MODEL_DOWNLOAD_PATH = os.path.join(BASE_DIR, "model", "production_model.pkl")
@@ -294,6 +381,9 @@ def load_production_model():
     for active_model_path in candidate_paths:
         if not os.path.exists(active_model_path):
             continue
+        if is_git_lfs_pointer_file(active_model_path):
+            app.logger.warning("Skipping Git LFS pointer model artifact: %s", active_model_path)
+            continue
 
         try:
             loaded_model = joblib.load(active_model_path)
@@ -313,7 +403,24 @@ def load_production_model():
         print("MODEL LOADED FROM:", active_model_path)
         return loaded_model, FEATURE_NAMES.copy(), {}
 
-    print("No compatible model file found.")
+    print("No compatible model file found. Attempting to rebuild from training dataset.")
+    if rebuild_model_artifacts():
+        for active_model_path in candidate_paths:
+            if not os.path.exists(active_model_path):
+                continue
+            try:
+                loaded_model = joblib.load(active_model_path)
+            except Exception as exc:
+                print(f"MODEL RELOAD FAILED for {active_model_path}: {exc}")
+                continue
+            loaded_feature_names = getattr(loaded_model, "feature_names_in_", None)
+            if loaded_feature_names is not None and list(loaded_feature_names) != FEATURE_NAMES:
+                continue
+            if getattr(loaded_model, "n_features_in_", len(FEATURE_NAMES)) != len(FEATURE_NAMES):
+                continue
+            print("MODEL LOADED FROM REBUILD:", active_model_path)
+            return loaded_model, FEATURE_NAMES.copy(), {}
+
     app.logger.warning("No compatible model file found. Checked paths: %s", candidate_paths)
     saved_features, saved_defaults = load_saved_model_metadata()
     return None, saved_features, saved_defaults
@@ -457,26 +564,49 @@ def predict():
                 "error": str(exc)
             }), 503
     print("MODEL STATUS:", model is not None)
+    print("model type:", type(model).__name__)
 
-    data = request.json
-    print(request.json)
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object."}), 400
+
+    print("received_data:", data)
+
+    feature_order = [
+        "OrderCount",
+        "QuantitySold",
+        "Revenue_Lag1",
+        "Revenue_Lag2",
+        "Revenue_Lag3",
+        "Quantity_Lag1"
+    ]
+
+    missing_fields = [field for field in feature_order if field not in data]
+    if missing_fields:
+        return jsonify({
+            "error": f"Missing required fields: {', '.join(missing_fields)}"
+        }), 400
 
     try:
         input_values = {
             name: float(data[name])
-            for name in ACTIVE_FEATURE_NAMES
+            for name in feature_order
         }
         ordered_features = pd.DataFrame(
-            [[input_values[name] for name in ACTIVE_FEATURE_NAMES]],
-            columns=ACTIVE_FEATURE_NAMES
+            [[input_values[name] for name in feature_order]],
+            columns=feature_order
         )
-        prediction = model.predict(ordered_features)[0]
-    except (KeyError, TypeError, ValueError):
+        print("ordered_features:")
+        print(ordered_features)
+        raw_model_prediction = model.predict(ordered_features)[0]
+        prediction = round(float(raw_model_prediction), 2)
+        print("raw model.predict result:", raw_model_prediction)
+        print("final prediction:", prediction)
+    except Exception as exc:
         return jsonify({
-            "error": "All six prediction inputs must be numeric."
-        }), 400
+            "error": str(exc)
+        }), 500
 
-    print("OUTPUT:", prediction)
     prediction = round(float(prediction), 2)
 
 
@@ -576,6 +706,13 @@ def prediction_history():
         dict(row)
         for row in rows
     ])
+
+
+@app.route("/api/latest-prediction", methods=["GET", "OPTIONS"])
+@app.route("/latest-prediction", methods=["GET", "OPTIONS"])
+@login_required
+def latest_prediction():
+    return jsonify(get_latest_prediction_payload())
 
 
 # ==========================

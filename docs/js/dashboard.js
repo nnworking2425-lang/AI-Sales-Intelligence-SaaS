@@ -82,7 +82,8 @@ function setActiveNav() {
 
 async function loadPerformance() {
     try {
-        const [performance, analytics, modelInfo] = await Promise.all([
+        const [latestPrediction, performance, analytics, modelInfo] = await Promise.all([
+            getJson("/api/latest-prediction").catch(() => ({})),
             getJson("/api/dashboard").catch(() => ({})),
             getJson("/api/analytics").catch(() => ({})),
             getJson("/api/model-info").catch(() => ({}))
@@ -93,7 +94,7 @@ async function loadPerformance() {
             mae: safeNumber(analytics.mae ?? modelInfo.mae ?? performance.mae, 0),
             rmse: safeNumber(analytics.rmse ?? modelInfo.rmse ?? performance.rmse, 0),
             test_samples: safeNumber(analytics.test_samples ?? analytics.samples ?? modelInfo.samples ?? modelInfo.test_samples ?? performance.test_samples ?? performance.samples, 0),
-            latest_forecast: safeNumber(performance.latest_forecast ?? performance.latest ?? performance.predicted_revenue ?? performance.recent_prediction, 0),
+            latest_forecast: safeNumber(latestPrediction.latest_forecast ?? latestPrediction.latest ?? latestPrediction.predicted_revenue ?? latestPrediction.recent_prediction ?? performance.latest_forecast ?? performance.latest ?? performance.predicted_revenue ?? performance.recent_prediction, 0),
             total_revenue: safeNumber(performance.total_revenue ?? performance.totalRevenue ?? analytics.total_revenue, 0),
             average_order_value: safeNumber(performance.average_order_value ?? performance.average_revenue ?? performance.average_order ?? analytics.average_revenue, 0),
             growth: safeNumber(performance.growth ?? performance.growth_rate ?? analytics.growth_rate, 0)
