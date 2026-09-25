@@ -94,10 +94,10 @@ async function loadPerformance() {
             mae: safeNumber(analytics.mae ?? modelInfo.mae ?? performance.mae, 0),
             rmse: safeNumber(analytics.rmse ?? modelInfo.rmse ?? performance.rmse, 0),
             test_samples: safeNumber(analytics.test_samples ?? analytics.samples ?? modelInfo.samples ?? modelInfo.test_samples ?? performance.test_samples ?? performance.samples, 0),
-            latest_forecast: safeNumber(latestPrediction.latest_forecast ?? latestPrediction.latest ?? latestPrediction.predicted_revenue ?? latestPrediction.recent_prediction ?? performance.latest_forecast ?? performance.latest ?? performance.predicted_revenue ?? performance.recent_prediction, 0),
-            total_revenue: safeNumber(performance.total_revenue ?? performance.totalRevenue ?? analytics.total_revenue, 0),
-            average_order_value: safeNumber(performance.average_order_value ?? performance.average_revenue ?? performance.average_order ?? analytics.average_revenue, 0),
-            growth: safeNumber(performance.growth ?? performance.growth_rate ?? analytics.growth_rate, 0)
+            latest_forecast: safeNumber(latestPrediction.latest_prediction ?? latestPrediction.latest_forecast ?? latestPrediction.latest ?? latestPrediction.predicted_revenue ?? latestPrediction.recent_prediction ?? performance.latest_prediction ?? performance.latest_forecast ?? performance.latest ?? performance.predicted_revenue ?? performance.recent_prediction, 0),
+            total_revenue: safeNumber(performance.total_revenue ?? performance.totalRevenue ?? analytics.total_revenue ?? analytics.totalRevenue, 0),
+            average_order_value: safeNumber(performance.average_revenue ?? performance.average_order_value ?? performance.average_order ?? analytics.average_revenue ?? analytics.average_order_value, 0),
+            growth: safeNumber(performance.growth_rate ?? performance.growth ?? analytics.growth_rate ?? analytics.growth, 0)
         };
 
         setTextForIds(["kpi-r2", "performance-r2", "analytics-accuracy"], `${(dashboardMetrics.r2_accuracy * 100).toFixed(2)}%`);
@@ -113,8 +113,8 @@ async function loadAnalyticsSummary() {
         const data = await getJson("/api/analytics");
         const dashboardMetrics = {
             total_revenue: safeNumber(data.total_revenue ?? data.totalRevenue, 0),
-            average_order_value: safeNumber(data.average_order_value ?? data.average_revenue ?? data.average_order, 0),
-            growth: safeNumber(data.growth ?? data.growth_rate, 0),
+            average_order_value: safeNumber(data.average_revenue ?? data.average_order_value ?? data.average_order, 0),
+            growth: safeNumber(data.growth_rate ?? data.growth ?? data.growthRate, 0),
             best_sales_day: data.best_sales_day || "--",
             highest_revenue: safeNumber(data.highest_revenue ?? data.highest_forecast, 0)
         };
