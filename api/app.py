@@ -81,13 +81,23 @@ def home():
     }
 
 
+@app.before_request
+def debug_model_state():
+    global MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
+    if MODEL is None:
+        MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
+    print("MODEL OBJECT:", MODEL)
+
+
 @app.route("/health", methods=["GET", "OPTIONS"])
 def health():
-    model_loaded = MODEL is not None
+    global MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
+    if MODEL is None:
+        MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
     return jsonify({
         "status": "ok",
         "service": "AI Sales Intelligence API",
-        "model_loaded": model_loaded
+        "model_loaded": MODEL is not None
     })
 
 
@@ -423,8 +433,10 @@ def test():
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    global MODEL
-    model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = get_model()
+    global MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
+    if MODEL is None:
+        MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
+    model = MODEL
     print("MODEL STATUS:", model is not None)
 
     if model is None:
@@ -660,8 +672,10 @@ def model_training_history():
 @app.route("/model-info", methods=["GET"])
 @login_required
 def model_info():
-    global MODEL
-    model, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = get_model()
+    global MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
+    if MODEL is None:
+        MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS = load_production_model()
+    model = MODEL
 
     if model is not None:
         payload = {
