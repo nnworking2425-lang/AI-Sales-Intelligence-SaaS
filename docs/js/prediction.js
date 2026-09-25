@@ -77,7 +77,9 @@ async function predict() {
     };
     result.innerHTML = "<strong class=\"result-value\">Predicting...</strong>";
     if (status) status.textContent = "Requesting forecast...";
-    console.log("Request URL:", `${API_BASE_URL}/predict`);
+    const requestUrl = `${API_BASE_URL}/predict`;
+    console.log("FETCH URL", requestUrl);
+    console.log("Request URL:", requestUrl);
     console.log("PAYLOAD:", payload);
 
     try {
@@ -89,6 +91,7 @@ async function predict() {
         });
 
         const data = await response.json().catch(() => ({}));
+        console.log("PREDICT RESULT", data);
         console.log("PREDICT RESPONSE", data);
 
         if (!response.ok) {
@@ -96,7 +99,7 @@ async function predict() {
             throw new Error(errorMessage.includes("Model is not available in this deployment") ? "Prediction request failed" : errorMessage);
         }
 
-        const prediction = Number(data.predicted_revenue ?? data.prediction ?? data.value);
+        const prediction = Number(data.predicted_revenue ?? data.prediction ?? data.predictionValue ?? data.value);
         if (!Number.isFinite(prediction)) throw new Error("The API returned an invalid prediction");
         console.log("Prediction received", data);
         const predictionState = {

@@ -1,5 +1,3 @@
-const API_BASE_URL = "https://ai-sales-intelligence-saas.onrender.com";
-
 async function predict() {
 	const resultElement = document.getElementById("result");
 	const predictButton = document.getElementById("predictButton");
@@ -32,8 +30,10 @@ async function predict() {
 			body: JSON.stringify(data)
 		});
 
+		console.log("FETCH URL", `${API_BASE_URL}/predict`);
 		console.log("API STATUS:", response.status);
 		const result = await response.json();
+		console.log("PREDICT RESULT", result);
 		console.log(response);
 
 		if (!response.ok) {

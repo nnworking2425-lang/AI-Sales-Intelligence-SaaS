@@ -1,4 +1,3 @@
-const API_BASE_URL = "https://ai-sales-intelligence-saas.onrender.com";
 const DASHBOARD_REFRESH_KEY = "ai-sales-dashboard-refresh";
 
 function setTextForIds(ids, value) {
@@ -22,6 +21,7 @@ function formatMetric(value, digits = 2, suffix = "") {
 
 async function getJson(path, options = {}) {
     const url = `${API_BASE_URL}${path}`;
+    console.log("FETCH URL", url);
     console.log("Dashboard API URL", url);
     try {
         const response = await fetch(url, { credentials: "include", ...options });
@@ -144,8 +144,9 @@ async function loadAnalyticsCharts() {
 async function loadModelInfo() {
     try {
         const data = await getJson("/api/model-info");
+        console.log("MODEL INFO", data);
         const modelName = data.model || "--";
-        const accuracyValue = safeNumber(data.r2, 0) * 100;
+        const accuracyValue = safeNumber(data.r2 ?? data.r2_accuracy, 0) * 100;
 
         document.querySelectorAll("[data-model-name]").forEach((element) => { element.textContent = modelName; });
         document.querySelectorAll("[data-model-accuracy]").forEach((element) => { element.textContent = `${accuracyValue.toFixed(2)}%`; });
