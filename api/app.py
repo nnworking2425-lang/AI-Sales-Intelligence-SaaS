@@ -26,22 +26,51 @@ except ImportError:
     from database import initialize_database
 
 app = Flask(__name__)
+ALLOWED_CORS_ORIGINS = [
+    "https://nnworking2425-lang.github.io",
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+]
 allowed_origins = [
     origin.strip()
-    for origin in os.getenv(
-        "CORS_ORIGINS",
-        "https://ai-sales-intelligence-saas.onrender.com,http://localhost:5500,http://127.0.0.1:5500,http://localhost:3000,http://localhost:8000,http://127.0.0.1:8000"
-    ).split(",")
+    for origin in os.getenv("CORS_ORIGINS", ",".join(ALLOWED_CORS_ORIGINS)).split(",")
     if origin.strip()
 ]
 CORS(
     app,
     resources={r"/*": {"origins": allowed_origins}},
     supports_credentials=True,
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers",
+    ],
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     expose_headers=["Content-Type", "Authorization"],
+    max_age=600,
 )
+
+
+@app.after_request
+def add_cors_headers(response):
+    origin = request.headers.get("Origin")
+    if origin in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Vary"] = "Origin"
+
+    if request.method == "OPTIONS":
+        response.headers["Access-Control-Allow-Origin"] = origin if origin in allowed_origins else "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = (
+            "Content-Type, Authorization, X-Requested-With, "
+            "Access-Control-Request-Method, Access-Control-Request-Headers"
+        )
+        response.headers["Access-Control-Max-Age"] = "600"
+
+    return response
 
 
 @app.route("/")
@@ -52,7 +81,13 @@ def home():
     }
 
 
-@app.route("/api/dashboard")
+@app.route("/health", methods=["GET", "OPTIONS"])
+def health():
+    return jsonify({"status": "ok", "service": "AI Sales Intelligence API"})
+
+
+@app.route("/dashboard", methods=["GET", "OPTIONS"])
+@app.route("/api/dashboard", methods=["GET", "OPTIONS"])
 @login_required
 def dashboard_api():
     performance_response = model_performance()
