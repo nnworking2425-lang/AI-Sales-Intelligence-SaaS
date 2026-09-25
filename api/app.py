@@ -555,6 +555,7 @@ create_table()
 def test():
     return jsonify({"status": "API OK"})
 
+@app.route("/api/predict", methods=["POST"])
 @app.route("/predict", methods=["POST"])
 def predict():
     global MODEL, ACTIVE_FEATURE_NAMES, ACTIVE_FEATURE_DEFAULTS
@@ -613,11 +614,12 @@ def predict():
             [[input_values[name] for name in feature_order]],
             columns=feature_order
         )
-        print("ordered_features:")
+        print("=== MODEL INPUT DATAFRAME ===")
         print(ordered_features)
+        print("=== RAW MODEL PREDICTION ===")
         raw_model_prediction = model.predict(ordered_features)[0]
+        print(raw_model_prediction)
         prediction = round(float(raw_model_prediction), 2)
-        print("raw model.predict result:", raw_model_prediction)
         print("final prediction:", prediction)
     except Exception as exc:
         return jsonify({

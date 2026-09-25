@@ -72,6 +72,23 @@ def test_latest_prediction_and_dashboard_payload():
         assert dashboard_payload["latest_forecast"] == 278.0, dashboard_payload
 
 
+def test_prediction_page_uses_canonical_feature_contract():
+    prediction_page = (ROOT / "docs" / "pages" / "prediction.html").read_text(encoding="utf-8")
+    prediction_script = (ROOT / "docs" / "js" / "prediction.js").read_text(encoding="utf-8")
+
+    for field_name in [
+        "OrderCount",
+        "QuantitySold",
+        "Revenue_Lag1",
+        "Revenue_Lag2",
+        "Revenue_Lag3",
+        "Quantity_Lag1",
+    ]:
+        assert f'id="{field_name}"' in prediction_page, f"Missing canonical field id: {field_name}"
+        assert f'"{field_name}"' in prediction_script, f"Prediction script missing canonical field: {field_name}"
+
+
 if __name__ == "__main__":
     test_latest_prediction_and_dashboard_payload()
+    test_prediction_page_uses_canonical_feature_contract()
     print("latest-prediction regression passed")

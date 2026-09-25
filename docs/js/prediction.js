@@ -1,5 +1,21 @@
 const PREDICTION_STORAGE_KEY = "ai-sales-last-prediction";
 
+function clearStalePredictionCache() {
+    const raw = localStorage.getItem(PREDICTION_STORAGE_KEY);
+    if (!raw) return;
+
+    try {
+        const saved = JSON.parse(raw);
+        const prediction = Number(saved.predictionValue ?? saved.prediction ?? saved.predicted_revenue ?? saved.value);
+        const staleValues = new Set([273, 278, 0]);
+        if (Number.isFinite(prediction) && staleValues.has(prediction)) {
+            localStorage.removeItem(PREDICTION_STORAGE_KEY);
+        }
+    } catch (error) {
+        console.warn("Unable to inspect saved prediction cache:", error);
+    }
+}
+
 function notifyDashboardRefresh() {
     const timestamp = Date.now();
     localStorage.setItem("ai-sales-dashboard-refresh", String(timestamp));
@@ -62,18 +78,38 @@ function displayPrediction(data, shouldPersist = true) {
     console.log("Prediction UI updated");
 }
 
+function getPredictionInputValue(fieldName) {
+    const aliases = {
+        OrderCount: ["OrderCount", "orderCount", "order_count"],
+        QuantitySold: ["QuantitySold", "quantitySold", "quantity_sold"],
+        Revenue_Lag1: ["Revenue_Lag1", "revenueLag1", "revenue_lag1"],
+        Revenue_Lag2: ["Revenue_Lag2", "revenueLag2", "revenue_lag2"],
+        Revenue_Lag3: ["Revenue_Lag3", "revenueLag3", "revenue_lag3"],
+        Quantity_Lag1: ["Quantity_Lag1", "quantityLag1", "quantity_lag1"]
+    };
+
+    const candidates = aliases[fieldName] || [fieldName];
+    for (const candidate of candidates) {
+        const element = document.getElementById(candidate);
+        if (element && element.value !== "") {
+            return Number(element.value);
+        }
+    }
+    return 0;
+}
+
 async function predict() {
     console.log("START PREDICT");
     const result = document.getElementById("predictionResult");
     const status = document.getElementById("prediction-status");
     if (!result) return;
     const payload = {
-        OrderCount: Number(document.getElementById("orderCount").value),
-        QuantitySold: Number(document.getElementById("quantitySold").value),
-        Revenue_Lag1: Number(document.getElementById("revenueLag1").value),
-        Revenue_Lag2: Number(document.getElementById("revenueLag2").value),
-        Revenue_Lag3: Number(document.getElementById("revenueLag3").value),
-        Quantity_Lag1: Number(document.getElementById("quantityLag1").value)
+        OrderCount: getPredictionInputValue("OrderCount"),
+        QuantitySold: getPredictionInputValue("QuantitySold"),
+        Revenue_Lag1: getPredictionInputValue("Revenue_Lag1"),
+        Revenue_Lag2: getPredictionInputValue("Revenue_Lag2"),
+        Revenue_Lag3: getPredictionInputValue("Revenue_Lag3"),
+        Quantity_Lag1: getPredictionInputValue("Quantity_Lag1")
     };
     result.innerHTML = "<strong class=\"result-value\">Predicting...</strong>";
     if (status) status.textContent = "Requesting forecast...";
@@ -128,6 +164,7 @@ function resetPredictionPlaceholder() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    clearStalePredictionCache();
     resetPredictionPlaceholder();
     restorePredictionState();
 });
