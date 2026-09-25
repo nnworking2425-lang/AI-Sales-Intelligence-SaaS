@@ -1,5 +1,3 @@
-const API_BASE_URL = "https://ai-sales-intelligence-saas.onrender.com";
-
 const PREDICTION_STORAGE_KEY = "ai-sales-last-prediction";
 
 function notifyDashboardRefresh() {
